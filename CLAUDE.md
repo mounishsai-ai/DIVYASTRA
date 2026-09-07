@@ -60,20 +60,20 @@ to make that structurally impossible. Do not break them for convenience.
 
 ## Current phase
 
-> **Phase 0 — Claude Code is the brain. Zero custom code.** *(in progress)*
+> **Phase 1 — Hermes as the spine.** *(blocked on one key)*
 >
-> - [x] `cua-driver` installed and **verified live** — drove Calculator via the
->       accessibility tree, read back `Display is 42`. See
->       [docs/05-phase0-findings.md](docs/05-phase0-findings.md).
-> - [x] `.mcp.json` written and loaded.
-> - [x] **Browser verified** through logged-in Chrome (`Profile 8`) — read
->       Wikipedia's featured article via the `browser_*` CDP tools. No
->       Playwright needed.
-> - [ ] Gmail MCP server + OAuth — mailbox decided (`mounishsai.ai@`,
->       read-only first, **revoke the grant when done**).
+> Phase 0 is **done**: `cua-driver` verified on the desktop (Calculator) and in
+> the browser (Wikipedia via logged-in Chrome `Profile 8`). Gmail deferred.
 >
-> Then Phase 1 is Hermes, not our own core — see the D2 reversal in
-> [docs/02-decisions.md](docs/02-decisions.md).
+> - [x] Hermes v0.21.0 installed, set to `gemini-3.8-flash`.
+> - [x] `cua-driver` registered as an MCP server inside Hermes.
+> - [ ] **BLOCKED — add `GEMINI_API_KEY` to `%LOCALAPPDATA%\hermes\.env`.**
+>       Get one free at aistudio.google.com/apikey.
+> - [ ] Then: run a desktop task *through Hermes* to close the phase.
+>
+> Details: [docs/06-phase1-hermes.md](docs/06-phase1-hermes.md).
+> Known gap: **Hermes has no spend cap.** Fine on the free tier; must be
+> handled before billing is enabled.
 
 ---
 

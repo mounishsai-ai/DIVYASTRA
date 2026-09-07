@@ -60,17 +60,22 @@ reversal in [02-decisions.md](02-decisions.md) for why.
 4. Confirm the same Calculator task works *through Hermes* rather than through
    Claude Code.
 
-**Acceptance**
-- [ ] Hermes runs locally (`127.0.0.1:8642`), no remote host configured.
-- [ ] A desktop task issued to Hermes completes using `cua-driver`.
-- [ ] The model is Gemini, and the model choice lives in config, not in code.
-- [ ] **Does Hermes support per-task / per-agent model overrides?** This is the
-      mechanism behind "don't burn tokens 24/7" — the Tier 2 / Tier 3 split in
-      [01-architecture.md](01-architecture.md) needs it. If yes, tiering is
-      config. **If no, say so out loud and decide how to express it** before
-      Phase 5 depends on it.
-- [ ] Step / time / spend caps exist on the agent loop — Hermes's, or ours.
-- [ ] Nothing from Phase 0 had to be rebuilt.
+**Acceptance** — see [06-phase1-hermes.md](06-phase1-hermes.md)
+- [x] Hermes **v0.21.0** installed natively. No admin, no WSL, no Docker.
+- [x] The model is Gemini (`gemini-3.8-flash`), set in config, not code.
+- [x] `cua-driver` registered as an MCP server inside Hermes.
+- [x] **Per-task model overrides: YES** — `delegation.model` / `--model`.
+      Tiering is config. (Hermes recommends the *inverse* of our design:
+      frontier parent + cheap children. Theirs is probably better. Not changing
+      it until there is real usage data.)
+- [x] Step + failure-loop caps exist (`tool_loop_guardrails`,
+      `delegation.max_iterations`).
+- [ ] **Spend cap: DOES NOT EXIST in Hermes.** Must be enforced outside it —
+      see Phase 5. Not urgent on the free tier; **required before billing is
+      ever enabled.**
+- [ ] Hermes runs locally and completes a desktop task — **blocked on a
+      `GEMINI_API_KEY`.** First thing to do next session.
+- [x] Nothing from Phase 0 had to be rebuilt.
 
 ---
 
@@ -140,7 +145,10 @@ Much of this is Hermes cron; the work is deciding *policy*, not building it.
 **Steps**
 1. Recurring tasks via Hermes cron.
 2. Watchers: new mail matching a rule, a deadline nearing.
-3. Quiet hours, and a daily spend budget.
+3. Quiet hours.
+4. **The spend cap Hermes doesn't provide** — a Google Cloud budget alert plus
+   quotas on the API key, and lower `delegation.max_iterations` from its
+   default 250 once a normal task's cost is known.
 
 **Acceptance**
 - [ ] *"Every day at 8 pm, check the portal for new assignments and tell me."*
