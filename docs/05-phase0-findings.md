@@ -150,3 +150,107 @@ the `cua-*` tools appear.
 - [ ] The `browser_*` tools attaching to the real logged-in Chrome profile.
 - [ ] Whether typing into a normal (non-UWP) app is as smooth as Calculator was.
 - [ ] Gmail — not yet installed.
+
+---
+
+## Browser limb — verified 2026-09-08
+
+Navigated to Wikipedia through the real logged-in Chrome and read the page
+back: **"From today's featured article — George Krugers (1890–1964), a
+filmmaker active in the Dutch East Indies."** No Playwright involved. D3 holds.
+
+### Getting there took three real obstacles
+
+**1. The Chrome profile picker blocks attachment.**
+`browser_prepare` refused with `browser_wrong_target_refused: did not expose a
+stable native tab topology`. Cause: Chrome opened `chrome://profile-picker/`,
+which has no tabs to bind to. "Show on startup" is ON, so **every** plain
+Chrome launch hits this.
+
+**Fix — launch straight into a profile, skipping the picker:**
+
+```
+C:\Program Files\Google\Chrome\Application\chrome.exe --profile-directory=Profile 8
+```
+
+Note: if Chrome is **already running**, a new launch is swallowed by the
+existing instance and the argument is ignored. Close Chrome first.
+
+**2. Clicking the picker didn't work.** A background click on a Chromium
+surface returned `effect: unverifiable` and nothing happened — Chromium content
+drops synthetic background events, exactly as the tool docs warn. Not worth
+fighting; the launch flag above is the right answer.
+
+**3. The first `browser_prepare` failed, the second succeeded.** The driver
+automates Chrome's remote-debugging setup page; on a cold-started Chrome it
+reported `the exact Google Chrome remote-debugging setup page did not become
+ready`. **Retrying once after the browser settled worked.** Treat a first
+failure as a timing issue, not a dead end.
+
+### Which profile — and the privacy call
+
+This laptop has **nine** Chrome profiles, most belonging to other people
+(Devineni Akhil, Durgi Suvarna rani, Irfan khan Pathan, Jaison Reddy, Madara
+Uchiha). Attaching a DevTools endpoint gives the agent whatever that profile is
+logged into, so this is not a detail to guess at.
+
+**Decision: `Profile 8` — "Mounish Sai".** Chosen by Mounish. Note there are
+two Mounish profiles and the picker is misleading: `Profile 4` is *named*
+"Batman" with the account "Mounish sai", while `Profile 8` is named "Mounish
+Sai". `Profile 8` sits at the **bottom of the picker and needs scrolling**,
+which is why it wasn't in the first screenshot.
+
+Map profile directories to names any time with:
+`%LOCALAPPDATA%\Google\Chrome\User Data\Local State` → `profile.info_cache`.
+
+**Never attach to a profile that isn't Mounish's.**
+
+### Cleanup owed
+
+`browser_prepare` reported `changed_preferences: true` and
+`enabled_remote_debugging: true` on Profile 8. That setting **persists**. If
+DIVYASTRA is ever abandoned, turn it back off — a profile with remote debugging
+enabled is a profile any local process can drive.
+
+---
+
+## The expensive mistake — bounding snapshots
+
+An **unscoped** `get_browser_state(semantic_v2)` on the Wikipedia main page
+returned ~25,000 tokens and was truncated. One call. The page has 1,095 nodes
+and the response enumerates every ref.
+
+**Rule: never take an unscoped semantic snapshot of a content-heavy page.**
+Always bound it:
+
+- `query: "..."` — projects to matching nodes plus ancestors. Cheapest.
+- `scope_ref: "p1:0"` — one subtree only.
+- `continuation` — page through a large snapshot deliberately.
+
+Beware: a *too-narrow* query is also wrong. `query: "From today's featured
+article"` matched only the heading, not the article body, costing a second
+call. Aim at a distinctive phrase **inside** the content you want.
+
+This matters far beyond tidiness — it is the difference between a task costing
+a fraction of a cent and costing several cents, every time. It is the single
+biggest token lever in the whole browser limb.
+
+---
+
+## Gmail — decided, not yet built
+
+**Mailbox: `mounishsai.ai@gmail.com`** (professional). Mounish's call.
+
+> **Privacy note, recorded at his request: remove this access later.**
+> When DIVYASTRA is no longer being actively used, revoke the OAuth grant at
+> [myaccount.google.com/permissions](https://myaccount.google.com/permissions)
+> and delete the stored token. Do not leave a standing mail grant behind.
+
+**Start read-only.** Add send only when there is a real reason, and require
+confirmation before anything leaves the outbox.
+
+**Important:** the `claude.ai Gmail` connector in Claude Code is **not** the
+right limb for DIVYASTRA. It works only inside Claude — Hermes cannot use it.
+DIVYASTRA needs a **standalone Gmail MCP server** with its own Google Cloud
+OAuth client. The connector can satisfy the Phase 0 checkbox, but the real limb
+is separate work.
