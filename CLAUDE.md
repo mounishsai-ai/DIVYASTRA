@@ -65,9 +65,12 @@ to make that structurally impossible. Do not break them for convenience.
 > - [x] `cua-driver` installed and **verified live** — drove Calculator via the
 >       accessibility tree, read back `Display is 42`. See
 >       [docs/05-phase0-findings.md](docs/05-phase0-findings.md).
-> - [x] `.mcp.json` written (needs a Claude Code restart to load).
-> - [ ] Browser tools against the real logged-in Chrome profile.
-> - [ ] Gmail MCP server + OAuth.
+> - [x] `.mcp.json` written and loaded.
+> - [x] **Browser verified** through logged-in Chrome (`Profile 8`) — read
+>       Wikipedia's featured article via the `browser_*` CDP tools. No
+>       Playwright needed.
+> - [ ] Gmail MCP server + OAuth — mailbox decided (`mounishsai.ai@`,
+>       read-only first, **revoke the grant when done**).
 >
 > Then Phase 1 is Hermes, not our own core — see the D2 reversal in
 > [docs/02-decisions.md](docs/02-decisions.md).

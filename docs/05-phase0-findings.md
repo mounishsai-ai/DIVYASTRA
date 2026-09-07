@@ -147,9 +147,10 @@ the `cua-*` tools appear.
 
 ## Still unverified
 
-- [ ] The `browser_*` tools attaching to the real logged-in Chrome profile.
+- [x] ~~The `browser_*` tools attaching to the real logged-in Chrome profile.~~
+      **Verified** — see the browser section below.
 - [ ] Whether typing into a normal (non-UWP) app is as smooth as Calculator was.
-- [ ] Gmail — not yet installed.
+- [ ] Gmail — decided but not installed. Needs a standalone MCP server.
 
 ---
 
