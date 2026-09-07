@@ -226,6 +226,21 @@ accessibility trees accumulating in context**.
 4. **`--reasoning` level.** Gemini 3.x spends real tokens thinking — 3,139
    reasoning tokens in the Calculator run.
 
+### Two measurement gotchas found while trying to shortcut this
+
+- **`hermes prompt-size` ignores `-t`.** Passing `-t terminal` or `-t clarify`
+  returns byte-for-byte the same report. It is a static description of the
+  default configuration, not a per-invocation preview.
+- **`prompt-size` excludes MCP tools.** It reports 20 tools / 35 KB — the
+  built-ins only. cua-driver's ~57 tools are *not* counted, so the real
+  per-call payload during the Calculator run was substantially larger than
+  that report suggests.
+
+**Consequence: there is no free way to measure this.** Each tuning experiment
+costs a real run (~$0.29 at current settings). So Phase 1b should change one
+variable at a time and record `--usage-file` output for each, rather than
+changing several things and hoping.
+
 **None of this was done tonight.** It is a roadmap item of its own, because
 doing it properly needs measurement, not guessing.
 
