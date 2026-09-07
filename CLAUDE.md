@@ -117,4 +117,4 @@ divyastra/
   menu of five options.
 - Tell me plainly when something won't work, is against a service's rules, or
   costs money. Do not quietly work around it.
-- Prefer boring, well-trodden tools over clever new ones.
+
