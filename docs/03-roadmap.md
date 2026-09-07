@@ -19,25 +19,25 @@ This directly attacks the failure mode you described: months of glue before
 anything works.
 
 **Steps**
-1. `irm https://cua.ai/driver/install.ps1 | iex` — then `cua-driver doctor`.
-2. `claude mcp add --transport stdio cua-driver -- cua-driver mcp`
-3. Add Playwright MCP. **Plain pages first.**
-4. *Then* the logged-in profile — this is a separate, fiddlier step. Playwright
-   **cannot** attach to a normally-running Chrome. You must either start Chrome
-   with `--remote-debugging-port=9222` and connect over CDP, or point Playwright
-   at a copy of your user-data directory. If this fights you, **nothing is
-   broken** — it is one launch flag, and it is not a Phase 0 blocker.
-5. Add a Gmail MCP server; complete Google OAuth.
-6. Commit `.mcp.json`.
+1. ~~`irm https://cua.ai/driver/install.ps1 | iex`, then `cua-driver doctor`~~
+   **done 2026-09-08** — 0.24.0, all probes green.
+2. ~~Write `.mcp.json`~~ **done** — includes `--grant existing-profile` so the
+   browser tools can attach to logged-in Chrome/Edge.
+3. **Restart Claude Code** so the `cua-*` MCP tools load.
+4. Exercise the `browser_*` tools (they replace Playwright — see D3).
+5. Add a Gmail MCP server; complete Google OAuth. Decide **which mailbox**
+   first: professional or personal.
 
 **Acceptance**
-- [ ] `cua-driver doctor` reports a healthy interactive session.
-- [ ] From Claude Code: *"open Notepad and type hello"* — it works, **and your
-      mouse pointer never moves.**
-- [ ] From Claude Code: *"open wikipedia.org and tell me the featured article"*
-      — any public page. This is the real gate.
+- [x] `cua-driver doctor` reports a healthy interactive session.
+- [x] A real app driven end-to-end: Calculator launched, UIA tree read, four
+      buttons clicked **by name**, `Display is 42` read back — **and the real
+      mouse pointer never moved.**
+- [ ] From Claude Code (after restart): *"open wikipedia.org and tell me the
+      featured article"* — via `browser_navigate` / `get_browser_state`.
 - [ ] From Claude Code: *"summarise my three most recent emails."*
-- [ ] Written down: one thing each limb **cannot** do (you will hit these).
+- [x] Written down: what each limb cannot do — see
+      [05-phase0-findings.md](05-phase0-findings.md).
 
 *Stretch, not a gate:* the same browser task against your logged-in profile.
 
@@ -45,115 +45,130 @@ anything works.
 
 ---
 
-## Phase 1 — Her voice
+## Phase 1 — Hermes as the spine
 
-**Why before the core:** it is self-contained, it has zero dependency on
-anything else, and hearing your own assistant speak is the thing that keeps a
-side project alive.
+Hermes replaces what used to be Phases 2, 3 and 4 of this plan. See the D2
+reversal in [02-decisions.md](02-decisions.md) for why.
+
+**Steps**
+1. Install Hermes natively on Windows (self-contained — brings its own Python,
+   Node, git, ffmpeg into `%LOCALAPPDATA%\hermes`). No WSL, no Docker.
+2. Configure **Gemini Flash** as the default model.
+3. Register `cua-driver` as an MCP server inside Hermes:
+   `cua-driver mcp-config --client hermes`
+4. Confirm the same Calculator task works *through Hermes* rather than through
+   Claude Code.
+
+**Acceptance**
+- [ ] Hermes runs locally (`127.0.0.1:8642`), no remote host configured.
+- [ ] A desktop task issued to Hermes completes using `cua-driver`.
+- [ ] The model is Gemini, and the model choice lives in config, not in code.
+- [ ] Nothing from Phase 0 had to be rebuilt.
+
+---
+
+## Phase 2 — Telegram
+
+The feature you actually described: task from class, done at home.
+
+**Steps**
+1. BotFather → token. `@userinfobot` → your numeric user ID.
+2. `hermes gateway setup`, then `hermes gateway install` (registers a Windows
+   Scheduled Task at logon, non-elevated).
+3. Lock the allow-list to **your user ID only**.
+4. Voice notes in; text and voice replies out.
+
+**Acceptance**
+- [ ] Send a task from your phone; the laptop does it; a reply comes back.
+- [ ] Anyone else messaging the bot is refused.
+- [ ] Laptop asleep → task waits → runs on wake.
+- [ ] No public URL, no tunnel, no VPS anywhere in the setup.
+
+---
+
+## Phase 3 — Her voice (FRIDAY)
+
+Hermes has a voice mode, but the *personality and voice* are ours — this is the
+part that makes it DIVYASTRA and not a generic agent.
 
 **Steps**
 1. Kokoro-82M locally. Audition voices, pick the FRIDAY one.
 2. `voice/tts.py` exposing exactly `speak(text)`.
-3. whisper.cpp, CPU. `voice/stt.py` exposing `listen() -> str`.
+3. whisper.cpp on CPU. `voice/stt.py` exposing `listen() -> str`.
 4. openWakeWord on "Divyastra".
 5. `voice/personality.md` — who she is. Versioned, separate from the voice.
 
 **Acceptance**
 - [ ] `speak("Systems online.")` sounds right to you.
 - [ ] Round-trip: say something → text within ~2 s.
-- [ ] Wake word runs one hour with **zero** false triggers and near-zero CPU.
-- [ ] Swapping the TTS engine would touch **only** `voice/tts.py`.
+- [ ] Wake word runs one hour with **zero** false triggers, near-zero CPU.
+- [ ] Swapping the TTS engine touches **only** `voice/tts.py`.
 
 ---
 
-## Phase 2 — The core (first real code)
+## Phase 4 — Twilio: it actually calls you
 
-Now DIVYASTRA becomes a program instead of a config.
+**Read the India rules in [02-decisions.md](02-decisions.md) D6 first.** Short
+version: rent an **international** number (Indian numbers cannot place these
+calls), keep the volume low, and only ever call your own verified number.
 
 **Steps**
-1. `Task` object. One definition, used by everything.
-2. Persistent queue (JSON file is fine).
-3. `core/models.py` — the one adapter. Gemini first.
-4. The agent loop, as an MCP client, with **step / time / spend limits**.
-5. Facts memory: one Markdown file.
-6. Wire the voice channel in.
+1. Twilio trial; verify your own mobile as a caller ID.
+2. Configure Hermes's built-in Twilio gateway.
+3. Call only on tasks you explicitly mark as call-worthy — everything else
+   stays on Telegram.
 
 **Acceptance**
-- [ ] Speak a task → she does it on the desktop → she reports back by voice.
-- [ ] A deliberately impossible task stops cleanly at the step limit.
-- [ ] Kill and restart mid-task: the queue survives.
-- [ ] Every model call goes through `models.py`. Grep proves it.
-- [ ] **The billing-disabled week.** Turn off GCP billing and use her normally
-      for a week on the free Flash tier alone. If she still works, DIVYASTRA
-      survives the day the $300 expires. If she doesn't, fix it *now* — this is
-      far cheaper to learn in month one than month four. See
-      [04-costs-and-limits.md](04-costs-and-limits.md).
+- [ ] A finished task triggers a real ringing call, and you hear the result.
+- [ ] Only your verified number is ever dialled — enforced, not intended.
+- [ ] A per-day call cap exists and is enforced.
+- [ ] Cost per call is measured and written down.
 
 ---
 
-## Phase 3 — The phone channel
+## Phase 5 — Scheduling and initiative
 
-**This is the feature you actually described.** Task from class → done at home.
-
-**Steps**
-1. Telegram bot via BotFather. Lock it to your user ID only.
-2. Text messages in → Task.
-3. Voice notes in → whisper → Task.
-4. Replies out as text **and** a Kokoro voice note.
-5. Long tasks: acknowledge immediately, notify on completion.
-
-**Acceptance**
-- [ ] Send a voice note from your phone; the laptop does it; a voice note comes
-      back.
-- [ ] Anyone else messaging the bot is refused.
-- [ ] Laptop asleep → task waits → runs when it wakes.
-- [ ] The core needed **no changes** to gain this channel. *(If it did, the
-      layering is wrong — fix that before continuing.)*
-
----
-
-## Phase 4 — Triggers, schedules, initiative
-
-Turning a tool into an assistant: she acts without being asked.
+Much of this is Hermes cron; the work is deciding *policy*, not building it.
 
 **Steps**
-1. Scheduler: cron-like, plus one-shot ("tomorrow 7 am").
-2. Watchers: new mail matching a rule, a file appearing, a deadline nearing.
-3. Proactive notification with a spend budget per day.
-4. A "quiet hours" setting.
+1. Recurring tasks via Hermes cron.
+2. Watchers: new mail matching a rule, a deadline nearing.
+3. Quiet hours, and a daily spend budget.
 
 **Acceptance**
 - [ ] *"Every day at 8 pm, check the portal for new assignments and tell me."*
 - [ ] Idle for 24 h costs **zero** tokens. Verify in the provider console.
-- [ ] Daily spend cap is enforced, not just configured.
+- [ ] **The billing-disabled week.** Turn off GCP billing and use her normally
+      for a week on the free Flash tier alone. If she still works, DIVYASTRA
+      survives the day the $300 expires. If not, fix it now — far cheaper to
+      learn in month one than month four.
 
 ---
 
-## Phase 5 — Wider reach
+## Phase 6 — Custom limbs
 
-**Steps**
-1. WhatsApp MCP — **on a secondary number.** Re-read D7 in
-   [02-decisions.md](02-decisions.md) before starting.
-2. `capabilities/files` — read/write in an allow-listed folder only.
-3. `capabilities/college` — timetable, portal, deadlines.
+Only now, when the assistant already works, do we write our own code.
+
+1. `capabilities/files` — read/write inside an allow-listed folder only.
+2. `capabilities/college` — timetable, portal, deadlines.
 
 **Acceptance**
-- [ ] WhatsApp works and the primary number was never used.
 - [ ] The files limb refuses a path outside its allow-list.
+- [ ] Each limb works from Claude Code's MCP client *before* Hermes uses it.
 
 ---
 
-## Phase 6 — Gestures (stretch)
+## Phase 7 — Gestures (stretch)
 
-Only after 0–5 are green.
+Only after 0–6 are green.
 
 1. MediaPipe Hands on the webcam, CPU.
-2. Pinch → click, at first behind a hotkey so it is never always-on.
+2. Pinch → click, behind a hotkey so it is never always-on.
 3. Two or three gestures maximum.
 
 **Acceptance**
 - [ ] Pinch-to-click works at a comfortable distance.
-- [ ] **It was added as a channel and the core did not change.** This is the
+- [ ] **It was added as a limb/channel and nothing else changed.** This is the
       real test of the whole architecture.
 
 ---
@@ -166,6 +181,8 @@ Written down so they stop being tempting:
   person. Revisit only when it demonstrably fails.
 - A web dashboard. Telegram is the UI.
 - A local LLM. The hardware forbids it. Settled.
+- Our own task queue, scheduler, or channel gateway. Hermes has these. Writing
+  them again is the exact tangle this project is organised to avoid.
 - Multi-user support. It is *your* assistant.
 - Training a custom model.
 - Rewriting a limb someone already maintains.
