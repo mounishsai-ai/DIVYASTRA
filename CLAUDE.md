@@ -60,15 +60,17 @@ to make that structurally impossible. Do not break them for convenience.
 
 ## Current phase
 
-> **Phase 0 — Claude Code is the brain. Zero custom code.**
+> **Phase 0 — Claude Code is the brain. Zero custom code.** *(in progress)*
 >
-> Wire `cua-driver`, Playwright, and Gmail into `.mcp.json` and drive them by
-> hand from Claude Code. This produces a working desktop-controlling,
-> browser-driving, mail-reading assistant *before a single line of DIVYASTRA
-> is written*, and it becomes the permanent test bench for every limb.
+> - [x] `cua-driver` installed and **verified live** — drove Calculator via the
+>       accessibility tree, read back `Display is 42`. See
+>       [docs/05-phase0-findings.md](docs/05-phase0-findings.md).
+> - [x] `.mcp.json` written (needs a Claude Code restart to load).
+> - [ ] Browser tools against the real logged-in Chrome profile.
+> - [ ] Gmail MCP server + OAuth.
 >
-> Done when: the Phase 0 acceptance tests in
-> [docs/03-roadmap.md](docs/03-roadmap.md) all pass.
+> Then Phase 1 is Hermes, not our own core — see the D2 reversal in
+> [docs/02-decisions.md](docs/02-decisions.md).
 
 ---
 
@@ -76,16 +78,18 @@ to make that structurally impossible. Do not break them for convenience.
 
 | Layer | Choice | Cost |
 |---|---|---|
-| Desktop control | **cua-driver** (trycua/cua, MIT) | free |
-| Browser control | **Playwright MCP** | free |
+| Spine (hub, memory, cron, channels) | **Hermes Agent** (MIT, local mode) | free |
+| Desktop control | **cua-driver** 0.24.0 — installed & verified | free |
+| Browser control | **cua-driver `browser_*` tools** (CDP) | free |
 | Mail | **Gmail MCP server** + Google OAuth | free |
 | Everyday brain | **Gemini Flash** (free tier, GCP credits for bursts) | free → credits |
 | Hard-task brain | **Claude Sonnet via Agent SDK** | $20/mo credit incl. in Pro |
 | Voice out (FRIDAY) | **Kokoro-82M** TTS, local CPU | free |
 | Voice in | **whisper.cpp** local CPU | free |
 | Wake word | **openWakeWord** | free (non-commercial models) |
-| Phone channel | **Telegram bot** | free |
-| Core language | **Python 3.11** | — |
+| Phone channel | **Telegram** (daily) + **Twilio** (real calls) | free / ~$2/mo |
+| WhatsApp | **skipped** — ToS/ban risk, not worth it | — |
+| Custom limbs | our own MCP servers | free |
 
 **Hardware reality:** Intel UHD integrated graphics, 15.7 GB RAM, no NVIDIA
 GPU. This is load-bearing. No local LLM, no UI-TARS, no OmniParser. The brain
@@ -97,13 +101,15 @@ is always in the cloud; only small audio models run locally.
 
 ```
 divyastra/
-  core/          the hub: task queue, model router, agent loop, memory
-  channels/      ways I reach it: telegram, voice, hotkey, scheduler
   capabilities/  our own MCP servers (third-party ones are just config)
-  voice/         wake word, speech-to-text, text-to-speech
-  docs/          architecture, decisions, roadmap, costs
+  voice/         FRIDAY: wake word, speech-to-text, text-to-speech, persona
+  config/        Hermes config, gateway setup, model routing
+  docs/          architecture, decisions, roadmap, costs, findings
   .mcp.json      which MCP servers exist  (committed)
   .env           secrets                  (never committed)
+
+Note: core/ and channels/ are gone — Hermes provides the hub, the
+scheduler and the channels. We write limbs and personality, not plumbing.
 ```
 
 ---

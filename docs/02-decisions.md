@@ -35,43 +35,102 @@ Install is one line, user-scoped, no runtime dependencies.
 
 ---
 
-## D2. Overall spine → **our own thin core**, with Hermes as a *reference*
+## D2. Overall spine → **Hermes Agent** ~~our own thin core~~
 
-**Hermes Agent (Nous Research, MIT)** was the strongest candidate to adopt
-wholesale. It already has persistent memory, cron, voice, profiles, skills, and
-a desktop app. It is genuinely impressive and worth reading.
+> **REVERSED 2026-09-08.** The original decision rejected Hermes as
+> "server-shaped." **That was wrong**, and it was based on incomplete docs.
+> Mounish pushed back and asked me to check the June 2026 desktop release.
+> He was right. The corrected decision follows. The original reasoning is kept
+> below so the mistake stays visible.
 
-**Rejected as the spine because** its design centre is *"an agent that lives on
-your server."* Concretely: its messaging/channel integrations require a
-separate long-running **gateway process on a remote host**, and its cron is
-backend-managed. DIVYASTRA's whole premise is the opposite — *an assistant that
-drives my own laptop, offline-capable, no VPS, no monthly hosting bill.*
-Adopting a server-shaped system for a laptop-shaped problem is precisely the
-kind of mismatch that produces months of untangling.
+### What the recheck found (Hermes v0.15.2+, June 2026)
 
-**But we take its best idea directly:** Hermes drives the desktop through
-`cua-driver`. We use that same driver, without inheriting the server.
+- There is a **native Windows guide**. The installer is self-contained —
+  it brings its own Python 3.11, Node, git, ripgrep and ffmpeg into
+  `%LOCALAPPDATA%\hermes`. No WSL, no Docker.
+- **The gateway runs locally.** `hermes gateway install` registers a normal
+  **Windows Scheduled Task**, non-elevated, started at login — the same
+  mechanism `cua-driver` already uses.
+- **Telegram uses long polling.** No public URL, no webhook, no tunnel, no
+  VPS. The gateway reaches out to Telegram, so a laptop behind a router works.
+- Local mode serves on `127.0.0.1:8642`. Remote is *optional*, not required.
+- 30+ channels including Telegram, **SMS/voice via Twilio**, Email, Signal.
+- MIT licensed, model-agnostic, MCP-capable, persistent memory, cron, skills.
+- Its GPU requirement applies **only to local inference**, which we are not
+  doing — our brain is Gemini in the cloud.
 
-**Reconsider if** you ever get a VPS and want DIVYASTRA reachable when the
-laptop is off.
+### Why this is now the right call
+
+Hermes already implements what Phases 2, 3 and 4 of our roadmap describe: the
+task hub, the channels, the scheduler, and persistent memory. Writing those
+ourselves would be exactly the "months of glue before anything works" failure
+this project is organised to avoid. **The anti-tangle principle argues for
+adopting it, not against.**
+
+Critically, **our Phase 0 work carries over unchanged** — Hermes drives the
+desktop through `cua-driver`, the very thing we installed and verified. The
+`cua-driver` installer even prints a `mcp-config --client hermes` option. We
+are not throwing anything away.
+
+### What stays ours
+
+- The **FRIDAY voice and personality** (Kokoro + our own system prompt).
+- **Custom limbs** as MCP servers: college portal, files, anything Hermes has
+  no reason to ship.
+- The **cost discipline** — model routing and spend caps.
+- Gestures, later.
+
+### What we accept
+
+- Coupling to Hermes's direction. Mitigated by MIT licence and by the fact
+  that every limb is an MCP server that would survive a move.
+- Learning someone else's config model instead of our own code. For an
+  assistant that should exist and work, this is a good trade.
+
+### Original (incorrect) reasoning, kept deliberately
+
+> Rejected as the spine because its design centre is "an agent that lives on
+> your server" — messaging integrations require a gateway on a remote host and
+> cron is backend-managed.
+
+**The lesson:** that came from a docs page that did not mention Windows or
+local mode. Verify a blocking claim against the primary source *for the
+current version* before letting it decide an architecture.
 
 ---
 
-## D3. Browser → **Playwright MCP**, separate from the desktop limb
+## D3. Browser → **cua-driver's built-in browser tools** ~~Playwright MCP~~
 
-**Chosen because** the browser is where most real tasks live and it is the one
-app with a *better* interface than the accessibility tree. Playwright addresses
-real page elements, survives layout changes, and can attach to your **existing
-Chrome profile with your logins already in it**.
+> **REVISED 2026-09-08**, after actually installing the driver. Playwright is
+> probably unnecessary.
 
-**The deciding fact:** `cua-driver` documents that Chromium coordinate clicks
-require foreground focus-stealing. Routing the browser through the desktop limb
-would break the "keep using your laptop while it works" property. Two limbs it
-is.
+The reasoning for a separate browser limb was right, but the assumption that we
+needed *Playwright* for it was wrong. `cua-driver` 0.24.0 already ships a full
+CDP-based browser surface as its own tools:
 
-**Rejected:** Chrome DevTools MCP (aimed at debugging and performance, not
-driving); browser-use (excellent, but it is a whole agent with its own model
-loop — we already have a brain, we want hands).
+```
+browser_navigate  browser_click   browser_type    browser_pointer
+browser_dialog    browser_download browser_prepare browser_set_input_files
+get_browser_state
+```
+
+These drive the browser through Chrome DevTools Protocol — real page elements,
+not pixels — which is exactly what Playwright was wanted for. And the flag
+`--grant existing-profile` pre-authorises attaching to your **already
+logged-in Chrome or Edge profile**, which was the fiddliest open problem in the
+original Phase 0 plan. It is now one flag in `.mcp.json`.
+
+**So the architectural rule is unchanged** — browser work goes through browser
+tools, desktop work through desktop tools — but it is one limb, not two, and
+one less thing to install, configure and keep working.
+
+**Still to verify** (Phase 0): that these tools actually attach to the existing
+profile on this machine. If they disappoint, Playwright MCP is the fallback and
+nothing else in the design changes.
+
+**Rejected:** Chrome DevTools MCP (aimed at debugging, not driving);
+browser-use (a whole agent with its own model loop — we want hands, not another
+brain).
 
 ---
 
@@ -119,32 +178,55 @@ later; it is the right tool for that one job.
 
 ---
 
-## D6. Phone channel → **Telegram bot**
+## D6. Phone channel → **Telegram bot** (primary) + **Twilio** (real calls)
 
-Free, excellent API, handles voice notes both directions, works from any
-device, no phone number for the bot, no ToS problem. The single highest
-value-per-hour component in the project.
+**Telegram is the daily driver.** Free, voice notes both directions, no ToS
+problem, and it is a built-in Hermes gateway. Highest value-per-hour component
+in the project.
 
-**Rejected:** Twilio/PSTN (paid + India DLT registration); SMS (no audio);
-email as a control channel (too slow, no push).
+**Twilio is added for actual ringing calls** — decided by Mounish 2026-09-08.
+Also a built-in Hermes gateway, so it is config rather than code.
+
+### Twilio in India — the rules that actually apply
+
+Checked against Twilio's own India voice guidelines:
+
+- **Outbound calls to Indian numbers can only be placed from an international
+  (non-Indian) number.** So you rent a US number and it calls your Indian
+  mobile. This works, but the call will show a foreign caller ID — it may look
+  like spam to you at first, and may be filtered by your carrier or phone.
+- **Consent is required** for commercial communications. You are calling
+  *yourself*, so this is satisfied by definition — this is not telemarketing.
+- **Voice OTP/2FA is not permitted** and is blocked. We are not doing that.
+- **High volumes of short calls trigger automatic carrier blocks.** A handful
+  of personal calls a day is fine; do not build anything that dials in a loop.
+- Trial accounts can only call **verified** numbers — which is exactly your own
+  number, so the free trial is enough to build and test the whole thing.
+
+**Cost:** roughly $1–2/month for a US number, plus about $0.0075–0.02/minute to
+Indian mobiles. Small, but **not free** — the first genuinely paid component in
+DIVYASTRA. Budget it consciously.
+
+**Note:** Twilio is *not* a TRAI-registered telemarketer in India. That matters
+for commercial campaigns, not for an assistant calling its owner — but it is
+why you should never point this at anyone else's number.
+
+**Rejected:** Plivo/Exotel — genuinely cheaper for India and worth a look if
+Twilio's foreign caller ID becomes annoying, but Twilio is already a Hermes
+gateway and that integration is worth more than the price difference here.
 
 ---
 
-## D7. WhatsApp → **build it, but late, and with eyes open**
+## D7. WhatsApp → **skipped**
 
-Technically fine: mature MCP servers exist (e.g. `lharries/whatsapp-mcp`), and
-they work by bridging WhatsApp Web.
+Dropped 2026-09-08 at Mounish's decision. Good call — it was the only component
+carrying account-ban risk, and Telegram plus Twilio already covers reaching
+your phone.
 
-**The real risk, stated plainly:** unofficial WhatsApp Web bridges **violate
-WhatsApp's Terms of Service**, and accounts using them **can be banned**. It is
-your account and your call, but losing your primary WhatsApp as a student is a
-genuinely bad day.
-
-**If we build it:** use a secondary number, never the primary. Alternatively
-the official WhatsApp Cloud API is ToS-safe but requires a Meta Business
-account and is clumsy for personal messaging.
-
-Scheduled for Phase 5 — after everything that carries no account risk works.
+Kept for the record: unofficial WhatsApp Web bridges violate WhatsApp's Terms
+of Service and accounts using them can be banned. If this is ever revisited,
+use a secondary number, never the primary. Hermes does ship a WhatsApp gateway,
+so it would be config — but the ToS risk is unchanged by that convenience.
 
 ---
 
