@@ -1,116 +1,113 @@
 # Good morning — read this first
 
-Written 2026-09-08 while you slept. Two minutes of reading, then one 2-minute
-task and DIVYASTRA thinks for the first time.
+Updated 2026-09-08, overnight. Nothing is blocked on you any more.
 
 ---
 
-## Where we got to
+## It works
 
-**Phase 0 is done. Phase 1 is one API key away from done.**
+**Hermes drove your desktop by itself, with no help from me.**
 
-DIVYASTRA can already control your laptop. That is proven, not theoretical:
+I gave it one command. It launched Calculator, clicked `8 × 9 =` through the
+Windows accessibility tree, and reported back **72**.
 
-- **Desktop** — launched Calculator, read its buttons *by name* from Windows'
-  accessibility tree, clicked `7 × 6 =`, read back `42`. Your real mouse never
-  moved.
-- **Browser** — opened Wikipedia in your actual logged-in Chrome and read out
-  today's featured article. No Playwright needed; it turned out `cua-driver`
-  does browsers too.
-
-**Hermes** (the brain that will run all this without Claude Code) is installed
-and pointed at Gemini Flash, with `cua-driver` already plugged into it.
-
----
-
-## Your one task (2 minutes)
-
-Hermes has no API key, so it can't think yet.
-
-1. Open **[aistudio.google.com/apikey](https://aistudio.google.com/apikey)**
-2. Create a key — the **free tier is fine** and is deliberately our default
-3. Add one line to `%LOCALAPPDATA%\hermes\.env`:
+That's the whole chain running:
 
 ```
-GEMINI_API_KEY=paste-your-key-here
+Hermes (the hub)  ->  Gemini 3.8 Flash on Vertex AI  ->  cua-driver  ->  Windows
 ```
 
-Don't paste the key into chat or into this project folder. That `.env` lives in
-the Hermes directory, outside the repo, which is where it belongs.
-
-Then tell me and I'll run the Phase 1 test: the same Calculator task, but
-driven by Hermes instead of by me.
+Phase 0 and Phase 1 are both **done**. You didn't need to do anything — I
+switched it to Vertex AI as you asked, using your Google Cloud credits.
 
 ---
 
-## Three things you should know
+## The one thing you need to know
 
-**1. Your laptop changed in ways you should be aware of.**
-- `cua-driver-serve` now starts at every login (a background process that *can*
-  synthesise input, though it does nothing until something connects to it).
-- **Chrome `Profile 8` now has remote debugging permanently enabled.** That's
-  how the browser attach works, but it means local processes can drive that
-  profile.
-- Hermes installed its own Python and Node (a few hundred MB). Your system
-  Node 24 was left untouched.
+**That Calculator task cost $0.29.**
 
-All three are reversible, and all three are written down in
-[docs/05-phase0-findings.md](docs/05-phase0-findings.md) and
-[docs/06-phase1-hermes.md](docs/06-phase1-hermes.md) with the undo commands.
+Twenty-nine cents. To click four buttons. It took 33 API calls.
 
-**2. A near-miss worth one sentence.**
-When I first tested Notepad, it opened your existing window titled
-`*so my clg conduting project exhibit` — the `*` means unsaved work. The next
-step would have typed into your coursework notes. I switched to Calculator.
-There's now a written rule: read the window title before acting, never type
-into a `*`.
+At that rate your ~$290 of credit is about **1,000 tasks** — a few weeks of real
+use, not months. So before we build Telegram on top of this, we should fix it,
+otherwise we're just making it easier to spend faster.
 
-**3. Hermes has no spend cap.**
-It has step limits and loop-failure limits, but nothing that stops it spending
-money. Harmless while we're on the free tier — but a Google Cloud budget alert
-has to exist before you ever turn billing on. It's in the roadmap so it can't
-be quietly forgotten.
+**The cause is measured, not guessed.** Every call re-sends a 25 KB system
+prompt plus 35 KB of tool descriptions — and that's *before* cua-driver adds its
+~57 tools. We use about 10 of those 57.
+
+**The main fix is a good one**, because it solves two problems at once: telling
+cua-driver to expose only the tools we actually use makes every call cheaper
+*and* shrinks what a confused agent could reach. Cheaper and safer, same change.
+
+That's now **Phase 1b** in the roadmap, with a target of getting the same task
+under $0.05 — measured properly, not estimated. It's the first thing I'd do
+next.
 
 ---
 
-## Two things I got wrong, and you were right
+## What I set up on your Google Cloud
 
-**Hermes.** I rejected it as "server-shaped, needs a VPS." You told me to check
-the June 2026 release. You were right — it runs entirely locally, Telegram
-needs no public URL, and it already implements the hub, scheduler and channels
-I'd planned to build by hand. That reversal saved weeks. The wrong reasoning is
-kept visible in [docs/02-decisions.md](docs/02-decisions.md) rather than quietly
-deleted.
+Everything verified working, nothing guessed:
 
-**"Prefer boring tools."** You cut that line. Today proved you right twice:
-`cua-driver` and Hermes are both months old and both were the correct choice.
+- **Vertex AI**, project `placement-agent-22587`, model
+  `google/gemini-3.8-flash`, region `global`.
+- **Reused your existing `jarvix-vertex` service account** — it already had
+  exactly the right minimal role (`roles/aiplatform.user`), so I didn't create
+  a new one. Its key is stored in the Hermes folder, locked to your account,
+  outside this repo. The revoke command is in
+  [docs/06-phase1-hermes.md](docs/06-phase1-hermes.md).
 
----
-
-## What's next, in order
-
-| Phase | What | Blocked on |
-|---|---|---|
-| **1** | Hermes runs a desktop task | **your API key** |
-| 2 | Telegram — task from class, done at home | a BotFather token + your user ID |
-| 3 | FRIDAY's voice (Kokoro + whisper.cpp) | nothing |
-| 4 | Twilio — it actually rings your phone | a Twilio trial |
-
-Phase 2 is the one you actually described wanting. It's close.
+**One thing worth knowing about your budgets.** You already had two, but both
+count spend *after* credits are applied — so while the $300 lasts they read ₹0
+and **would never have warned you as the credit drained**. I added one that
+tracks gross spend instead ("DIVYASTRA credit burn"), alerting at 50/80/100% of
+₹8,000/month. It's alert-only, can't block anything, and the delete command is
+in the docs.
 
 ---
 
-## Where things live
+## Why a service account, not just your login
 
-- **[CLAUDE.md](CLAUDE.md)** — the rules and the current phase. Short on purpose.
-- **[docs/00-glossary.md](docs/00-glossary.md)** — plain-English terms. Start here
-  if any word above was unfamiliar.
-- **[docs/02-decisions.md](docs/02-decisions.md)** — what we chose and what we
-  rejected, with reasons.
-- **[docs/03-roadmap.md](docs/03-roadmap.md)** — phases and their pass/fail tests.
-- **[docs/05-phase0-findings.md](docs/05-phase0-findings.md)** — everything that
-  tripped us up on your machine, with fixes.
-- **[docs/06-phase1-hermes.md](docs/06-phase1-hermes.md)** — the Hermes setup.
+Worth one paragraph because it would have eaten hours otherwise.
 
-Nothing is half-finished. Every change is committed, the tree is clean, and you
-can `git log` to see exactly what happened and why.
+Vertex with your normal `gcloud` login needs a special header that Hermes
+doesn't send — so it returns `403 PERMISSION_DENIED`. I confirmed this three
+ways, including that `gcloud auth application-default set-quota-project`
+*doesn't* fix it. Service accounts belong to the project directly and need no
+such header. That's why the key exists.
+
+---
+
+## Where things stand
+
+| Phase | Status |
+|---|---|
+| 0 — desktop + browser limbs | **done** (Gmail deferred by you) |
+| 1 — Hermes as the brain | **done** |
+| **1b — cost tuning** | **next, and it should be** |
+| 2 — Telegram (task from class) | needs a BotFather token + your user ID |
+| 3 — FRIDAY's voice | nothing blocking |
+| 4 — Twilio, real calls | needs a Twilio trial |
+
+Phase 2 is the feature you actually described wanting. It's two steps away.
+
+---
+
+## Nothing else needs you right now
+
+No decisions pending, no keys to fetch. Everything above is committed, the tree
+is clean, and each step is a separate commit with its reasoning.
+
+If you only read one more thing, make it the cost section of
+[docs/06-phase1-hermes.md](docs/06-phase1-hermes.md) — that's the number that
+shapes what we do next.
+
+**Useful command you now have:**
+
+```
+hermes -z "your task here" --usage-file usage.json
+```
+
+One-shot mode, and it writes exact token counts and cost to a file. That's how
+every figure above was measured rather than estimated.
