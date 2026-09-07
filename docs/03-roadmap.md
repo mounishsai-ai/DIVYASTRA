@@ -33,13 +33,17 @@ anything works.
 - [x] A real app driven end-to-end: Calculator launched, UIA tree read, four
       buttons clicked **by name**, `Display is 42` read back — **and the real
       mouse pointer never moved.**
-- [ ] From Claude Code (after restart): *"open wikipedia.org and tell me the
-      featured article"* — via `browser_navigate` / `get_browser_state`.
-- [ ] From Claude Code: *"summarise my three most recent emails."*
+- [x] **Browser verified** — navigated to Wikipedia and read back today's
+      featured article (George Krugers), through the **real logged-in Chrome
+      profile**. The "stretch" goal was met outright, so Playwright is dropped.
+- [~] *"summarise my three most recent emails"* — **deferred by Mounish.**
+      Mailbox decided (`mounishsai.ai@`, read-only, revoke later); needs a
+      standalone Gmail MCP server, not the claude.ai connector.
 - [x] Written down: what each limb cannot do — see
       [05-phase0-findings.md](05-phase0-findings.md).
 
-*Stretch, not a gate:* the same browser task against your logged-in profile.
+**Phase 0 is closed** apart from the deferred Gmail limb, which nothing else
+depends on.
 
 **Value even if you stop here:** a genuinely useful desktop assistant.
 
