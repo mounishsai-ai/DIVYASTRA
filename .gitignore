@@ -1,0 +1,27 @@
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+node_modules/
+
+# never commit credentials or auth tokens
+credentials.json
+token.json
+*.key
+secrets/
+
+# local runtime state
+data/
+logs/
+*.log
+
+# model weights - too big for git
+models/
+*.onnx
+*.bin
+*.gguf
