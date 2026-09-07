@@ -51,8 +51,9 @@ Hermes replaces what used to be Phases 2, 3 and 4 of this plan. See the D2
 reversal in [02-decisions.md](02-decisions.md) for why.
 
 **Steps**
-1. Install Hermes natively on Windows (self-contained — brings its own Python,
-   Node, git, ffmpeg into `%LOCALAPPDATA%\hermes`). No WSL, no Docker.
+1. Install Hermes natively on Windows. It is **self-contained but not small** —
+   it brings its own Python 3.11, Node, MinGit (~45 MB), ripgrep and ffmpeg
+   into `%LOCALAPPDATA%\hermes`. Expect a few hundred MB. No WSL, no Docker.
 2. Configure **Gemini Flash** as the default model.
 3. Register `cua-driver` as an MCP server inside Hermes:
    `cua-driver mcp-config --client hermes`
@@ -63,6 +64,12 @@ reversal in [02-decisions.md](02-decisions.md) for why.
 - [ ] Hermes runs locally (`127.0.0.1:8642`), no remote host configured.
 - [ ] A desktop task issued to Hermes completes using `cua-driver`.
 - [ ] The model is Gemini, and the model choice lives in config, not in code.
+- [ ] **Does Hermes support per-task / per-agent model overrides?** This is the
+      mechanism behind "don't burn tokens 24/7" — the Tier 2 / Tier 3 split in
+      [01-architecture.md](01-architecture.md) needs it. If yes, tiering is
+      config. **If no, say so out loud and decide how to express it** before
+      Phase 5 depends on it.
+- [ ] Step / time / spend caps exist on the agent loop — Hermes's, or ours.
 - [ ] Nothing from Phase 0 had to be rebuilt.
 
 ---

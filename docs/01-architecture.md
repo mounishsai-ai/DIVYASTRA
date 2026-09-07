@@ -17,13 +17,13 @@ spaghetti.
              |   every channel emits the SAME object:
              |   Task{ id, text, source, reply_to, urgency }
 +------------v-------------------------------------------+
-|  2. CORE                the hub                        |
-|     queue -> router -> agent loop -> memory            |
+|  2. HUB           <- HERMES PROVIDES THIS              |
+|     queue -> router -> agent loop -> memory -> cron    |
 +------------+-------------------------------------------+
              |   MCP - one protocol for every capability
 +------------v-------------------------------------------+
 |  3. CAPABILITIES        the limbs (separate programs)  |
-|     cua-driver · playwright · gmail · whatsapp · files |
+|     cua-driver (desktop + browser) · gmail · ours      |
 +--------------------------------------------------------+
 
 +--------------------------------------------------------+
@@ -88,12 +88,21 @@ so.
 
 ---
 
-## Layer 2 — Core
+## Layer 2 — Hub → **Hermes provides this**
 
-Four small pieces. This is the only code that is truly *ours*.
+> Originally this layer was code we would write. It is not any more — see the
+> D2 reversal in [02-decisions.md](02-decisions.md). The *shape* below is still
+> exactly right; Hermes just already implements it, and implements it better
+> than a first attempt would.
 
-**Queue** — tasks land here. Survives restart (a file or SQLite, not memory).
-Lets a task from class sit until the laptop is awake.
+**What Hermes gives us:** the persistent task queue, the agent loop, persistent
+memory, cron/scheduling, and the channel gateways (Telegram, Twilio, email…) —
+all running locally on `127.0.0.1:8642`, no VPS.
+
+**What stays ours:** the FRIDAY voice and personality, our own limbs, and the
+cost discipline below.
+
+### The cost discipline (ours to enforce, whoever runs the loop)
 
 **Router** — decides *how much brain* a task deserves, before spending anything:
 
@@ -108,17 +117,26 @@ Tier 3   hard multi-step desktop work Claude Sonnet     <- capped by budget
 awake all day, but the expensive parts only wake for Tier 2 and above. Idle
 DIVYASTRA costs nothing.
 
-**Agent loop** — the cycle from the glossary. Add: a step limit, a wall-clock
-limit, and a spend limit, so a confused model cannot loop forever on your
-credits. Non-negotiable.
+> **Unverified assumption — check in Phase 1.** Tiering needs Hermes to support
+> **per-task or per-agent model overrides**, not just one global default model.
+> If it does, the tiers are config. If it does not, we need another way to
+> express "cheap by default, expensive only when hard" — find out before
+> anything depends on it.
+>
+> Note the floor is safe regardless: wake word, STT and TTS are all local, so
+> **idle genuinely costs zero** whatever the router can or cannot express.
+
+**Agent loop** — the cycle from the glossary. It needs a step limit, a
+wall-clock limit, and a spend limit, so a confused model cannot loop forever on
+your credits. Non-negotiable — confirm Hermes exposes these, or add them.
 
 **Memory** — three kinds, deliberately separated:
 - *Task memory* — scratch notes, dies with the task.
-- *Facts* — "my college portal is at X", "mom's number is Y". A plain file.
+- *Facts* — "my college portal is at X", "mom's number is Y".
 - *Episodes* — what it did last time and whether it worked.
 
-Start with only *facts*, in one Markdown file. Do not build a vector database.
-You will want to. Don't.
+Hermes ships persistent memory, so use its facility rather than inventing one.
+Do not build a vector database. You will want to. Don't.
 
 ---
 
@@ -129,12 +147,12 @@ write config, not code.
 
 | Limb | What it is | Ours? |
 |---|---|---|
-| `cua-driver` | clicks, types, reads windows on Windows | no — install it |
-| `playwright` | drives the real browser | no — install it |
+| `cua-driver` | clicks, types, reads windows **and drives the browser** | no — installed ✓ |
 | `gmail` | read/send mail | no — install it |
-| `whatsapp` | messages (see risk note in 04) | no — install it |
 | `files` | read/write in allowed folders | **ours**, later |
 | `college` | timetable, portal, deadlines | **ours**, later |
+| ~~`playwright`~~ | superseded by cua-driver's `browser_*` tools | dropped |
+| ~~`whatsapp`~~ | dropped — ToS/ban risk not worth it | dropped |
 
 ### Desktop: why `cua-driver`
 
@@ -148,16 +166,19 @@ Its honest limits: some apps misreport their accessibility tree; admin windows
 cannot be driven from a normal process (Windows UIPI); and Chromium/Electron
 apps need real foreground focus for coordinate clicks.
 
-### Browser: why a separate limb at all
+### Browser: separate tools, same limb
 
-That last limitation is exactly why **the browser does not go through the
-desktop limb.** Clicking a web page by screen position is fragile and, in
-Chromium, steals your focus. Playwright talks to the browser's own automation
-protocol — it addresses real page elements, survives layout changes, and runs
-against your **normal Chrome profile with your existing logins**.
+Clicking a web page by screen position is fragile and, in Chromium, steals your
+focus. So the browser gets its own **tools** — `browser_navigate`,
+`browser_click`, `browser_type`, `get_browser_state` and friends — which talk
+to the browser's own automation protocol (CDP) and address real page elements.
 
-Rule: **anything inside a browser goes to the browser limb. Everything else
-goes to the desktop limb.**
+These ship *inside* `cua-driver`, so it is one limb, not two. The flag
+`--grant existing-profile` lets them attach to your **already logged-in Chrome
+or Edge**.
+
+Rule, unchanged: **anything inside a browser uses the `browser_*` tools.
+Everything else uses the desktop tools.** Never pixel-click a web page.
 
 ---
 
