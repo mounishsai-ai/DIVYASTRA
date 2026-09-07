@@ -25,39 +25,79 @@ copy instead of touching yours. It also installed **ripgrep** via winget.
 
 ## What's configured
 
+**Vertex AI, not AI Studio** — decided by Mounish 2026-09-08 to use the $300
+Google Cloud credit. See D4 in [02-decisions.md](02-decisions.md).
+
 ```yaml
 model:
-  default: "gemini-3.8-flash"    # the workhorse
-  provider: "gemini"             # Google AI Studio direct
-  # base_url:                    # unset — the gemini provider supplies its own
-
-mcp_servers:
-  cua-driver:
-    command: "C:/Users/mouni/AppData/Local/Programs/Cua/cua-driver/bin/cua-driver.exe"
-    args: ["mcp", "--grant", "existing-profile"]
-    timeout: 180
+  default: "google/gemini-3.8-flash"   # Vertex needs the publisher prefix
+  provider: "vertex"
+  # base_url:                          # unset — the adapter builds it
 ```
 
-`gemini-3.8-flash` is the newest Flash in Hermes's model registry, and matches
-the pricing research ($0.75/$3.75 per 1M tokens, introductory through Dec 2026).
-
-Verified two ways. `hermes config get` reads it all back correctly, and the
-original was backed up to `config.yaml.divyastra-backup` first.
-
-**Unsetting `base_url` was checked against the source, not assumed.** Hermes's
-provider registry (`hermes_cli/auth.py`) supplies the endpoint for `gemini`:
+`.env` (in the Hermes directory, outside this repo):
 
 ```
-("gemini", "Google AI Studio", "https://generativelanguage.googleapis.com/v1beta",
- ("GOOGLE_API_KEY", "GEMINI_API_KEY"), "GEMINI_BASE_URL")
+VERTEX_CREDENTIALS_PATH=C:\Users\mouni\AppData\Local\hermes\vertex-sa-key.json
+VERTEX_PROJECT_ID=placement-agent-22587
+VERTEX_REGION=global
 ```
 
-That URL satisfies `is_native_gemini_base_url()`, so requests route through
-`GeminiNativeClient` rather than the generic OpenAI wire. Leaving the old
-OpenRouter `base_url` in place would have **broken** it — commenting it out was
-required, not merely tidy.
+`mcp_servers.cua-driver` unchanged from Phase 0.
 
-Accepted key names: **`GEMINI_API_KEY`** or `GOOGLE_API_KEY`.
+### Three things that had to be got right
+
+**1. The model name needs a `google/` prefix on Vertex.**
+Plain `gemini-3.8-flash` is rejected: *"Malformed publisher model … expected
+`<publisher>/<model>`"*. This differs from AI Studio, where the bare name works.
+
+**2. `global` region, not a regional one.** Gemini 3.x is global-only, and
+`global` uses the bare `aiplatform.googleapis.com` host rather than
+`<region>-aiplatform...`. Already Hermes's default.
+
+**3. A service account is required — user ADC will NOT work.**
+Subtle, and would have cost hours. Vertex with *user* credentials requires an
+`x-goog-user-project` header, and **Hermes does not send one** — it passes a
+bare bearer token to a standard OpenAI client. Proven directly:
+
+- ADC token alone → `403 PERMISSION_DENIED … requires a quota project`
+- Same token + `x-goog-user-project` header → works
+- `gcloud auth application-default set-quota-project` does **not** fix it — the
+  raw token doesn't carry the quota project
+
+Service accounts belong to the project, so they need no such header. We reused
+the **existing** `jarvix-vertex@…` account, which already had exactly
+`roles/aiplatform.user` — minimal and correct. Key is at
+`%LOCALAPPDATA%\hermes\vertex-sa-key.json`, permissions restricted to your
+account, and **outside this git repo**.
+
+> **To revoke later:**
+> ```
+> gcloud iam service-accounts keys delete 80cf619ba9e6c6c7144dabfa37388fa220074f74 --iam-account jarvix-vertex@placement-agent-22587.iam.gserviceaccount.com
+> ```
+> Then delete the JSON file.
+
+---
+
+## PHASE 1 PASSED — the whole stack works
+
+```
+hermes -z "…open Calculator and compute 8 x 9 via the accessibility tree…"
+```
+
+Hermes replied:
+
+> The final number shown on the Calculator display is **72**.
+> Invoked buttons via the UIA accessibility tree in the background:
+> Eight, Multiply by, Nine, Equals. Verified display text: `Display is 72`.
+
+That is the full chain, with no help from Claude Code:
+**Hermes (hub) → Gemini 3.8 Flash on Vertex (thinking) → cua-driver over MCP
+(hands) → Windows.**
+
+Useful discovery: **`hermes -z "prompt"`** is one-shot mode, and
+`--usage-file PATH` writes exact token and cost accounting. That is how every
+cost figure below was measured rather than guessed.
 
 ---
 
@@ -149,24 +189,61 @@ before overwriting.
 
 ---
 
-## BLOCKED: needs your Google API key
+## THE REAL PROBLEM: cost per task
 
-Hermes has **no API key configured** — `.env` contains only default settings,
-no credentials. It cannot think until it has one.
+Measured, not estimated:
 
-**What to do (2 minutes):**
+| Run | API calls | Cost |
+|---|---|---|
+| Trivial reply ("say DIVYASTRA ONLINE") | 1 | **$0.0092** |
+| Calculator: 8 x 9 via accessibility tree | 33 | **$0.29** |
 
-1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
-2. Create an API key (free tier is fine — that is deliberately the default path)
-3. Add one line to `%LOCALAPPDATA%\hermes\.env`:
+**Twenty-nine cents to click four buttons.** At that rate the ~$290 credit is
+roughly **1,000 tasks** — a real day of use would drain it in weeks, not months.
+
+### Why
+
+`hermes prompt-size` shows a **25 KB system prompt + 35 KB of tool schemas for
+the 20 built-in tools alone** — before cua-driver, which adds **~57 more tools**.
+That whole payload is re-sent on every one of the 33 calls. Prompt caching is
+working (929K cached tokens read) and it still cost $0.29.
+
+So the cost driver is not thinking. It is **tool-schema bloat, plus
+accessibility trees accumulating in context**.
+
+### Fixes, by expected payoff
+
+1. **Narrow cua-driver's tools with a capability manifest**
+   (`--permission-mode bounded --capability-manifest ...`). We use maybe 10 of
+   its 57 tools. This cuts cost *and* shrinks the blast radius — one change,
+   both benefits.
+2. **Drop unused toolsets per run** with `-t`. `file`, `delegation`,
+   `code_execution`, `browser-use`, `tts`, `vision` are ~20 KB of schema a
+   desktop task never touches.
+3. **Bound accessibility snapshots** — `max_elements`, `query`. The same lesson
+   already learned on the browser side in
+   [05-phase0-findings.md](05-phase0-findings.md).
+4. **`--reasoning` level.** Gemini 3.x spends real tokens thinking — 3,139
+   reasoning tokens in the Calculator run.
+
+**None of this was done tonight.** It is a roadmap item of its own, because
+doing it properly needs measurement, not guessing.
+
+### Budget guard added
+
+Both pre-existing budgets use `INCLUDE_ALL_CREDITS` — they track spend *after*
+credits apply, so while the $300 lasts they read ~0 and **would never warn you
+as the credit drained**.
+
+Added **"DIVYASTRA credit burn (gross, excl credits)"**: 8,000 INR/month, scoped
+to this project, alerting at 50/80/100%. That rate is roughly what spreads $300
+across the credit's ~90-day life, so an alert means burning too fast.
+
+Alert-only; it cannot block anything. Delete with:
 
 ```
-GEMINI_API_KEY=your-key-here
+gcloud billing budgets delete 471af866-574f-41d7-8ef8-a1dc954d06da --billing-account=01573C-ED4F11-44CBC4
 ```
-
-Then `hermes` should start and think. Do **not** paste the key into chat, a
-commit, or any file inside the project folder — `.env` in the Hermes directory
-is the right home for it, and it is outside this git repo.
 
 ---
 
@@ -175,5 +252,7 @@ is the right home for it, and it is outside this git repo.
 - **Telegram (Phase 2)** — needs a BotFather token and your numeric user ID.
   Both are yours to create; nothing useful can be done without them.
 - **Gmail** — deferred at your request.
-- **The Calculator-through-Hermes test** — the Phase 1 acceptance gate. It
-  needs the API key, so it is the first thing to run tomorrow.
+- **Cost tuning** — the capability manifest and toolset narrowing above. The
+  highest-value next task, but it needs measurement, not guesswork.
+- **`hermes setup`** was never run (it needs a real console). Everything was
+  configured by editing `config.yaml` and `.env` directly, which works fine.

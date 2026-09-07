@@ -74,12 +74,42 @@ reversal in [02-decisions.md](02-decisions.md) for why.
       it until there is real usage data.)
 - [x] Step + failure-loop caps exist (`tool_loop_guardrails`,
       `delegation.max_iterations`).
-- [ ] **Spend cap: DOES NOT EXIST in Hermes.** Must be enforced outside it —
-      see Phase 5. Not urgent on the free tier; **required before billing is
-      ever enabled.**
-- [ ] Hermes runs locally and completes a desktop task — **blocked on a
-      `GEMINI_API_KEY`.** First thing to do next session.
+- [x] **Spend cap** — Hermes has none, so it is enforced outside: a gross-spend
+      GCP budget alert now exists ("DIVYASTRA credit burn").
+- [x] **Hermes completed a real desktop task** — launched Calculator, clicked
+      `8 x 9 =` through the accessibility tree, read back **72**. Full chain:
+      Hermes -> Gemini on Vertex -> cua-driver -> Windows.
 - [x] Nothing from Phase 0 had to be rebuilt.
+
+**PHASE 1 IS GREEN.** But see Phase 1b — it cost $0.29 to click four buttons.
+
+---
+
+## Phase 1b — Cost tuning (do before Phase 2)
+
+**Why this jumped the queue:** the Phase 1 test cost **$0.29 for one trivial
+task** (33 API calls). At that rate ~$290 of credit is ~1,000 tasks. Building
+Telegram on top of that would just make it easy to spend faster.
+
+The cause is measured, not guessed: a 25 KB system prompt plus 35 KB of tool
+schemas for the built-in tools, before cua-driver adds ~57 more — all re-sent
+every call.
+
+**Steps**
+1. Write a cua-driver **capability manifest** exposing only the ~10 tools we
+   actually use. Cuts cost *and* blast radius in one change.
+2. Narrow toolsets with `-t`; drop `file`, `code_execution`, `browser-use`,
+   `tts`, `vision` for desktop tasks.
+3. Bound accessibility snapshots (`max_elements`, `query`) — the same lesson as
+   the browser side.
+4. Try `--reasoning` levels; the run spent 3,139 reasoning tokens.
+
+**Acceptance**
+- [ ] The same Calculator task costs **under $0.05** — measure with
+      `hermes -z ... --usage-file`, do not estimate.
+- [ ] A written note of what each change actually saved, so the next tuning
+      round starts from data.
+- [ ] Nothing broke: the task still returns 72.
 
 ---
 

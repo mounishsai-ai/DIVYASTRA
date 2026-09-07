@@ -62,20 +62,22 @@ to make that structurally impossible. Do not break them for convenience.
 
 ## Current phase
 
-> **Phase 1 — Hermes as the spine.** *(blocked on one key)*
+> **Phase 1 DONE. Next: Phase 1b — cost tuning.**
 >
-> Phase 0 is **done**: `cua-driver` verified on the desktop (Calculator) and in
-> the browser (Wikipedia via logged-in Chrome `Profile 8`). Gmail deferred.
+> The whole stack works end to end. Hermes launched Calculator on its own,
+> clicked `8 x 9 =` through the accessibility tree and read back **72** —
+> Hermes -> Gemini 3.8 Flash on **Vertex AI** -> cua-driver -> Windows.
+> Phase 0 (desktop + browser) is closed; Gmail deferred.
 >
-> - [x] Hermes v0.21.0 installed, set to `gemini-3.8-flash`.
-> - [x] `cua-driver` registered as an MCP server inside Hermes.
-> - [ ] **BLOCKED — add `GEMINI_API_KEY` to `%LOCALAPPDATA%\hermes\.env`.**
->       Get one free at aistudio.google.com/apikey.
-> - [ ] Then: run a desktop task *through Hermes* to close the phase.
+> **The problem: that task cost $0.29** across 33 API calls. ~$290 of credit is
+> only ~1,000 tasks. Cause measured, not guessed: 25 KB system prompt + 35 KB of
+> tool schemas, before cua-driver adds ~57 more tools, all re-sent every call.
+>
+> **Phase 1b fixes that before building anything else on top** — a cua-driver
+> capability manifest (cost *and* safety), narrower toolsets, bounded snapshots.
+> Target: the same task under $0.05, measured with `--usage-file`.
 >
 > Details: [docs/06-phase1-hermes.md](docs/06-phase1-hermes.md).
-> Known gap: **Hermes has no spend cap.** Fine on the free tier; must be
-> handled before billing is enabled.
 
 ---
 
@@ -87,7 +89,7 @@ to make that structurally impossible. Do not break them for convenience.
 | Desktop control | **cua-driver** 0.24.0 — installed & verified | free |
 | Browser control | **cua-driver `browser_*` tools** (CDP) | free |
 | Mail | **Gmail MCP server** + Google OAuth | free |
-| Everyday brain | **Gemini Flash** (free tier, GCP credits for bursts) | free → credits |
+| Everyday brain | **Gemini 3.8 Flash on Vertex AI** (GCP credits) | ~$0.29/task — see 1b |
 | Hard-task brain | **Claude Sonnet via Agent SDK** | $20/mo credit incl. in Pro |
 | Voice out (FRIDAY) | **Kokoro-82M** TTS, local CPU | free |
 | Voice in | **whisper.cpp** local CPU | free |

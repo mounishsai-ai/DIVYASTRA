@@ -124,9 +124,10 @@ original Phase 0 plan. It is now one flag in `.mcp.json`.
 tools, desktop work through desktop tools — but it is one limb, not two, and
 one less thing to install, configure and keep working.
 
-**Still to verify** (Phase 0): that these tools actually attach to the existing
-profile on this machine. If they disappoint, Playwright MCP is the fallback and
-nothing else in the design changes.
+**VERIFIED 2026-09-08.** The tools attached to the real logged-in Chrome
+(`Profile 8`) and read Wikipedia's featured article. Playwright is dropped for
+good. See [05-phase0-findings.md](05-phase0-findings.md) for the three
+obstacles hit on the way.
 
 **Rejected:** Chrome DevTools MCP (aimed at debugging, not driving);
 browser-use (a whole agent with its own model loop — we want hands, not another
@@ -145,9 +146,25 @@ Forced by two facts discovered in research:
    rollover). That is real, legitimate Claude budget — enough for occasional
    hard reasoning, not enough to be the default.
 
-So Gemini Flash is the workhorse (permanent free tier + your $300 GCP credit),
-Claude is the specialist. Both behind one adapter, so the split can be retuned
-by changing a threshold rather than rewriting anything.
+So Gemini Flash is the workhorse, Claude is the specialist.
+
+**REVISED 2026-09-08 — Vertex AI, not AI Studio.** Mounish chose to spend the
+$300 Google Cloud credit (~$290 left) rather than sit on the AI Studio free
+tier. Hermes has native Vertex support, including refresh of the 1-hour OAuth
+token, so this is config rather than code.
+
+Consequences, all verified live:
+
+- Model name gains a publisher prefix: **`google/gemini-3.8-flash`**.
+- Region must be **`global`** (Gemini 3.x is global-only).
+- **A service account is mandatory.** Hermes sends a bare bearer token with no
+  `x-goog-user-project` header, which user ADC requires — so ADC 403s. Details
+  and the revoke command are in [06-phase1-hermes.md](06-phase1-hermes.md).
+
+**The free tier remains the fallback, not a dead path.** The credit expires
+around 2026-12-06. Switching back is two lines: `provider: "gemini"` and a bare
+model name. Keep that reversibility — do not let anything depend on Vertex
+specifically.
 
 **Rejected:** a local LLM. With Intel UHD and 15.7 GB RAM, any model good
 enough for reliable tool-calling would be unusably slow. Settled — do not
