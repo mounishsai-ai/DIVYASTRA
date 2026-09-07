@@ -24,9 +24,10 @@ DIVYASTRA is designed around it, DIVYASTRA dies on day 91.
 path**, and it must remain sufficient for everyday use. Credits are for bursts,
 experiments, and heavy days — never for baseline operation.
 
-Test this deliberately: at some point, run a full week with billing disabled
-and see whether she still works. If she doesn't, the design is wrong, and you
-would rather learn that in month one than in month four.
+Test this deliberately: run a full week with billing disabled and see whether
+she still works. If she doesn't, the design is wrong, and you would rather
+learn that in month one than in month four. **This is a Phase 2 acceptance
+test, not a suggestion** — see [03-roadmap.md](03-roadmap.md).
 
 **The $20/month Claude credit is the more durable resource.** It does not
 expire and it renews. It is small, so spend it only on Tier 3 — genuinely hard
@@ -69,26 +70,37 @@ separate Windows user account. Never run it elevated: Windows UIPI already
 blocks admin windows from a normal process, and that is a **feature** — do not
 "fix" it by running as administrator.
 
-### 3. Credentials leaking — HIGH impact
+### 3. A background process you forgot about — LOW impact, HIGH confusion
+The `cua-driver` installer **registers an autostart task (`cua-driver-serve`)
+that runs at login.** So after Phase 0 there is a process on your laptop,
+always running, capable of synthesising input.
+
+This is not dangerous by itself — it does nothing until a client connects to
+it. But know it exists now, rather than finding it in Task Manager in three
+weeks and wondering what it is. `cua-driver autostart --help` shows how to
+disable it; `cua-driver status` shows what it is doing. If you would rather it
+only run when you want it, disable autostart and start it manually.
+
+### 4. Credentials leaking — HIGH impact
 The bot has your mail, your browser session, your messages.
 
 *Mitigation:* `.env`, never committed. `.gitignore` before the first commit.
 Lock the Telegram bot to your user ID alone. Do not let the model type
 passwords — `cua-driver` already blocks some of this; use browser autofill.
 
-### 4. Free-tier rate limits mid-task — MEDIUM
+### 5. Free-tier rate limits mid-task — MEDIUM
 Flash free tier is rate-limited per minute and per day.
 
 *Mitigation:* retry with backoff, then fall back to paid Flash, then tell you.
 Never fail silently.
 
-### 5. Silent breakage — MEDIUM
+### 6. Silent breakage — MEDIUM
 Windows updates, Chrome updates, WhatsApp changes. Something will break.
 
 *Mitigation:* this is what the one-limb-per-folder rule buys you — breakage
 stays local. Keep the Phase 0 acceptance tests runnable forever as a smoke test.
 
-### 6. Scope creep — the most likely killer
+### 7. Scope creep — the most likely killer
 Not a technical risk, but the one that actually ends projects like this.
 
 *Mitigation:* the phase gates, and the "Deliberately NOT doing" list in

@@ -21,18 +21,25 @@ anything works.
 **Steps**
 1. `irm https://cua.ai/driver/install.ps1 | iex` — then `cua-driver doctor`.
 2. `claude mcp add --transport stdio cua-driver -- cua-driver mcp`
-3. Add Playwright MCP.
-4. Add a Gmail MCP server; complete Google OAuth.
-5. Commit `.mcp.json`.
+3. Add Playwright MCP. **Plain pages first.**
+4. *Then* the logged-in profile — this is a separate, fiddlier step. Playwright
+   **cannot** attach to a normally-running Chrome. You must either start Chrome
+   with `--remote-debugging-port=9222` and connect over CDP, or point Playwright
+   at a copy of your user-data directory. If this fights you, **nothing is
+   broken** — it is one launch flag, and it is not a Phase 0 blocker.
+5. Add a Gmail MCP server; complete Google OAuth.
+6. Commit `.mcp.json`.
 
 **Acceptance**
 - [ ] `cua-driver doctor` reports a healthy interactive session.
 - [ ] From Claude Code: *"open Notepad and type hello"* — it works, **and your
       mouse pointer never moves.**
-- [ ] From Claude Code: *"open my college site and tell me what's on the
-      homepage"* — using the real logged-in Chrome profile.
+- [ ] From Claude Code: *"open wikipedia.org and tell me the featured article"*
+      — any public page. This is the real gate.
 - [ ] From Claude Code: *"summarise my three most recent emails."*
 - [ ] Written down: one thing each limb **cannot** do (you will hit these).
+
+*Stretch, not a gate:* the same browser task against your logged-in profile.
 
 **Value even if you stop here:** a genuinely useful desktop assistant.
 
@@ -76,6 +83,11 @@ Now DIVYASTRA becomes a program instead of a config.
 - [ ] A deliberately impossible task stops cleanly at the step limit.
 - [ ] Kill and restart mid-task: the queue survives.
 - [ ] Every model call goes through `models.py`. Grep proves it.
+- [ ] **The billing-disabled week.** Turn off GCP billing and use her normally
+      for a week on the free Flash tier alone. If she still works, DIVYASTRA
+      survives the day the $300 expires. If she doesn't, fix it *now* — this is
+      far cheaper to learn in month one than month four. See
+      [04-costs-and-limits.md](04-costs-and-limits.md).
 
 ---
 
