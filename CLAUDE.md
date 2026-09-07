@@ -23,7 +23,9 @@ speaks one shared protocol called **MCP**. A small **core** receives tasks from
 about it, and lets that model call the limbs. Nothing in the core knows *how*
 the desktop is clicked — it only knows a limb exists that can click.
 
-New to these words? Read [docs/00-glossary.md](docs/00-glossary.md) first.
+**Returning after a break? Read [START-HERE.md](START-HERE.md) first.**
+
+New to these words? Read [docs/00-glossary.md](docs/00-glossary.md).
 Full picture: [docs/01-architecture.md](docs/01-architecture.md).
 
 ---
