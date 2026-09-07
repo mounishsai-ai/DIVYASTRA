@@ -41,8 +41,23 @@ mcp_servers:
 `gemini-3.8-flash` is the newest Flash in Hermes's model registry, and matches
 the pricing research ($0.75/$3.75 per 1M tokens, introductory through Dec 2026).
 
-Verified: `hermes config get` reads all of it back correctly, and the original
-config was backed up to `config.yaml.divyastra-backup` first.
+Verified two ways. `hermes config get` reads it all back correctly, and the
+original was backed up to `config.yaml.divyastra-backup` first.
+
+**Unsetting `base_url` was checked against the source, not assumed.** Hermes's
+provider registry (`hermes_cli/auth.py`) supplies the endpoint for `gemini`:
+
+```
+("gemini", "Google AI Studio", "https://generativelanguage.googleapis.com/v1beta",
+ ("GOOGLE_API_KEY", "GEMINI_API_KEY"), "GEMINI_BASE_URL")
+```
+
+That URL satisfies `is_native_gemini_base_url()`, so requests route through
+`GeminiNativeClient` rather than the generic OpenAI wire. Leaving the old
+OpenRouter `base_url` in place would have **broken** it — commenting it out was
+required, not merely tidy.
+
+Accepted key names: **`GEMINI_API_KEY`** or `GOOGLE_API_KEY`.
 
 ---
 

@@ -188,6 +188,11 @@ reported `the exact Google Chrome remote-debugging setup page did not become
 ready`. **Retrying once after the browser settled worked.** Treat a first
 failure as a timing issue, not a dead end.
 
+**A stray tab may appear.** After setup, Profile 8 had an extra tab open at
+`http://0.0.0.8/` — an artifact of the driver typing into the address bar while
+enabling remote debugging. Harmless; just close it. Worth knowing so it isn't
+mistaken for something sinister.
+
 ### Which profile — and the privacy call
 
 This laptop has **nine** Chrome profiles, most belonging to other people
