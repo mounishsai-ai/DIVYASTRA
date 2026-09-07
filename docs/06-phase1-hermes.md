@@ -201,6 +201,15 @@ Measured, not estimated:
 **Twenty-nine cents to click four buttons.** At that rate the ~$290 credit is
 roughly **1,000 tasks** — a real day of use would drain it in weeks, not months.
 
+> **Caveat: these are Hermes's own estimates**, computed from a bundled pricing
+> snapshot (`cost_source: official_docs_snapshot`), not from the billing
+> console. The run reported 929K *cache-read* tokens, which bill far below the
+> normal input rate — if Hermes priced those at full rate, the true cost is
+> lower. A rough check against billed tokens alone (289K in x $0.75/1M + 1.5K
+> out x $3.75/1M ≈ $0.22) lands close, so the order of magnitude holds and the
+> fix below is right either way. **Confirm against the GCP billing console in a
+> day or two before quoting $0.29 as fact.**
+
 ### Why
 
 `hermes prompt-size` shows a **25 KB system prompt + 35 KB of tool schemas for

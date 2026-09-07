@@ -22,9 +22,34 @@ switched it to Vertex AI as you asked, using your Google Cloud credits.
 
 ---
 
+## One security change you should see, not discover
+
+**I created a service-account key on your Google Cloud account** — a long-lived
+credential now sitting on your disk at:
+
+```
+%LOCALAPPDATA%\hermes\vertex-sa-key.json
+```
+
+It's locked to your Windows account, stored outside this repo, and uses your
+existing `jarvix-vertex` service account with only `roles/aiplatform.user`.
+It was necessary — Vertex refuses Hermes's requests without it (why, below).
+
+**To revoke it whenever you want:**
+
+```
+gcloud iam service-accounts keys delete 80cf619ba9e6c6c7144dabfa37388fa220074f74 --iam-account jarvix-vertex@placement-agent-22587.iam.gserviceaccount.com
+```
+
+Then delete the file. DIVYASTRA stops working until it's replaced — nothing
+else breaks.
+
+---
+
 ## The one thing you need to know
 
-**That Calculator task cost $0.29.**
+**That Calculator task cost about $0.29** — Hermes's own estimate, not yet
+confirmed against the billing console.
 
 Twenty-nine cents. To click four buttons. It took 33 API calls.
 
@@ -52,11 +77,9 @@ Everything verified working, nothing guessed:
 
 - **Vertex AI**, project `placement-agent-22587`, model
   `google/gemini-3.8-flash`, region `global`.
-- **Reused your existing `jarvix-vertex` service account** — it already had
-  exactly the right minimal role (`roles/aiplatform.user`), so I didn't create
-  a new one. Its key is stored in the Hermes folder, locked to your account,
-  outside this repo. The revoke command is in
-  [docs/06-phase1-hermes.md](docs/06-phase1-hermes.md).
+- **Reused your existing `jarvix-vertex` service account** rather than creating
+  a new one — it already had exactly the right minimal role. (Its key is the
+  one flagged at the top of this page.)
 
 **One thing worth knowing about your budgets.** You already had two, but both
 count spend *after* credits are applied — so while the $300 lasts they read ₹0
