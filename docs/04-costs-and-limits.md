@@ -11,7 +11,7 @@ The honest version. Read before building anything that assumes money exists.
 | Claude Code Pro | **the workshop** — builds DIVYASTRA, cannot run inside it | ongoing |
 | Claude Agent SDK credit | **$20/month**, included with Pro, **no rollover** | monthly |
 | Google Cloud credit | **$300**, but **only 90 days** | ~2026-12-06 |
-| Gemini free tier | Flash / Flash-Lite, rate-limited, **permanent** | never |
+| Gemini free tier | Flash / Flash-Lite, rate-limited, **permanent** — the day-91 fallback | never |
 | Local CPU | whisper.cpp, Kokoro, openWakeWord, MediaPipe | free forever |
 | Hardware | Intel UHD graphics, 15.7 GB RAM, **no NVIDIA GPU** | — |
 
@@ -42,9 +42,12 @@ multi-step desktop reasoning where Flash visibly fails.
 2. **Every agent loop has three caps**: max steps, max wall-clock, max spend.
    Not configurable-in-theory — actually enforced.
 3. **A daily budget ceiling.** When hit, she says so and stops.
-4. **Screenshots are expensive.** Images cost far more than text. Prefer the
-   accessibility tree; take a screenshot only when the tree genuinely fails.
-   This is a cost decision as much as a reliability one.
+4. ~~**Screenshots are expensive** — prefer the accessibility tree.~~
+   **MEASURED FALSE 2026-09-08.** Suppressing screenshots made a task **5x
+   worse** (14 calls -> 75, $0.12 -> $1.00). The image is a correctness input
+   the model cross-checks the tree against; without it, it re-reads the tree
+   repeatedly. **Leave `include_screenshot` at its default.** See
+   [06-phase1-hermes.md](06-phase1-hermes.md).
 5. **Log every call's token count** from day one. You cannot control what you
    cannot see, and adding this later is annoying.
 
@@ -85,8 +88,13 @@ only run when you want it, disable autostart and start it manually.
 The bot has your mail, your browser session, your messages.
 
 *Mitigation:* `.env`, never committed. `.gitignore` before the first commit.
-Lock the Telegram bot to your user ID alone. Do not let the model type
+Lock any messaging channel to your own ID alone. Do not let the model type
 passwords — `cua-driver` already blocks some of this; use browser autofill.
+
+Also live now: `cua-driver` holds a **grant to attach to Chrome `Profile 8`**,
+and that profile has remote debugging permanently enabled. Revoking means
+removing `--grant existing-profile` from the autostart task and turning
+debugging off in Chrome.
 
 ### 5. Vertex rate limits — MEDIUM, and confirmed real
 
@@ -148,11 +156,14 @@ current phase, write it in the roadmap instead. That is the whole discipline.
 
 Written here because assuming any of these would waste days:
 
-- [ ] `cua-driver` actually works on **Windows 11 Home** with your apps —
-      Phase 0 proves this before anything is built on it.
-- [ ] Chrome can be driven by Playwright **while using your logged-in profile**
-      (may need Chrome started with a debugging flag).
-- [ ] Gemini free-tier limits are enough for a realistic day.
+- [x] ~~`cua-driver` works on Windows 11 Home~~ — **verified**, Phase 0.
+- [x] ~~Chrome can be driven while using the logged-in profile~~ — **verified**,
+      but only after fixing the grant bug (see
+      [05-phase0-findings.md](05-phase0-findings.md)).
+- [x] ~~Vertex rate limits~~ — **hit and measured**: per-minute, recovers in
+      minutes, will not affect normal use.
+- [ ] Gemini **free-tier** limits are enough for a realistic day *(still
+      untested — we have been on paid credits the whole time)*.
 - [ ] Kokoro latency on **your** CPU is short enough to feel conversational.
-- [ ] Telegram voice notes arrive in a format whisper.cpp reads directly
-      (likely OGG/Opus — may need ffmpeg).
+- [ ] Whether a deterministic limb really does reach ~$0 per run — the whole
+      cost strategy rests on it and it has never been demonstrated.
