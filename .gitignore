@@ -28,3 +28,8 @@ models/
 
 # generated audio - regenerable, large
 divyastra/voice/samples/
+
+# wake word training: multi-GB downloads and generated audio
+divyastra/voice/training/data/
+divyastra/voice/training/output/
+divyastra/voice/training/.venv/
