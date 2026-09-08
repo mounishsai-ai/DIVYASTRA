@@ -181,13 +181,27 @@ part that makes it DIVYASTRA and not a generic agent.
 2. `voice/tts.py` exposing exactly `speak(text)`.
 3. whisper.cpp on CPU. `voice/stt.py` exposing `listen() -> str`.
 4. openWakeWord on "Divyastra".
-5. `voice/personality.md` — who she is. Versioned, separate from the voice.
+5. ~~`voice/personality.md`~~ **done** - versioned here, deployed to
+   `%LOCALAPPDATA%\hermes\SOUL.md` (original backed up as
+   `SOUL.md.hermes-original`).
+
+**She calls him "Boss", never his name.** Decided 2026-09-08 after Kokoro
+mispronounced "Mounish" - eight respellings were tested and then abandoned,
+because "Boss" is both in character for FRIDAY and sidesteps the problem
+entirely. A better fix than the one being engineered.
+
+The persona also carries two things that are not personality but belong in every
+call: **write for speech** (no markdown, numbers as words) and **stop before
+anything irreversible**.
 
 **Acceptance**
-- [ ] `speak("Systems online.")` sounds right to you.
-- [ ] Round-trip: say something → text within ~2 s.
+- [x] `speak(...)` sounds right — voice `af_jessica`, chosen after auditioning
+      all 15 English female voices on a long realistic status line.
+- [x] Swapping the TTS engine touches **only** `voice/tts.py`.
+- [x] **Persona live** — Hermes replied *"Hello Boss, I can control your
+      desktop..."* and it was spoken in her voice. Brain -> speech works.
+- [ ] Round-trip: say something -> text within ~2 s (whisper.cpp, not built).
 - [ ] Wake word runs one hour with **zero** false triggers, near-zero CPU.
-- [ ] Swapping the TTS engine touches **only** `voice/tts.py`.
 
 ---
 
