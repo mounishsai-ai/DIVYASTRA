@@ -62,9 +62,18 @@ report does not show:
   offset. Same audio. Against phrases like "hey diana" it stops discriminating
   altogether.
 
-All of that was measured on synthetic speech, which is no more like your voice
-than the synthetic speech it trained on. So it is a reason to test, not a reason
-to reject. **Your voice is the only test that counts.**
+- On a real microphone it never fully goes quiet: it idles around 0.15-0.21 in
+  a silent room and ambient noise alone reached 0.54, where "hey jarvis" reads
+  0.000. So the compare tool measures your room's floor first.
+
+None of that is a flaw in the code I wrote -- I checked it by sliding livekit's
+own scorer over the same audio and getting the same collapse (0.934 for "hey
+divya" against 0.939 for "hey diana"). It is the model's behaviour, reproduced
+faithfully.
+
+But every one of those numbers came from synthetic speech, which is no more like
+your voice than the synthetic speech it trained on. So it is a reason to test,
+not a reason to reject. **Your voice is the only test that counts.**
 
 If it does not work out, `hey_jarvis` keeps working and nothing is blocked. The
 detector, the threshold table and the compare tool all stay useful either way.

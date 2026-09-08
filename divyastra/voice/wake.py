@@ -95,6 +95,19 @@ class _LivekitDetector:
     run only the classifier each frame, rather than redoing all 16.
 
     Needs only numpy + onnxruntime, both already in voice/.venv.
+
+    VALIDATED against livekit's own stateless predict() on the same audio, and
+    the check that matters is the one in the 0.6-0.94 range, not the agreement
+    on near-zero clips. Sliding both past every 80 ms offset, vendor code gave
+    0.934 / 0.907 / 0.939 for "hey divya" / "hey jarvis" / "hey diana"; this
+    detector gave 0.944 / 0.928 / 0.943. Same collapse, same ordering. So the
+    poor discrimination below is the MODEL's, faithfully reproduced here -
+    it is not an artifact of this class.
+
+    KNOWN BEHAVIOUR, measured on a real microphone 2026-09-09: this model has a
+    non-zero idle floor (~0.15-0.21 in a quiet room, and ambient noise alone
+    reached 0.54) where openWakeWord's hey_jarvis reads 0.000. Any threshold
+    must clear that floor, which is why --compare calibrates it first.
     """
 
     EMB_WINDOW = 76  # mel frames per embedding
@@ -299,13 +312,22 @@ def _compare() -> None:
             continue
         engines.append([word, engine, THRESHOLDS.get(word, 0.5), 0.0])
 
+    names = [e[0] for e in engines]
     print("\n  Say 'hey jarvis' a few times, then 'hey divya' a few times.")
     print("  Speak at your NORMAL volume - not projected. Then stay quiet a")
     print("  minute so we can see what silence and ordinary noise score.")
     print("  Ctrl+C when done.\n")
-    print(f"  {'hey_jarvis':>12}  {'hey_divya':>12}")
+    print("  " + "  ".join(f"{n:>12}" for n in names))
 
-    peaks = {e[0]: 0.0 for e in engines}
+    # hey_divya has a non-zero idle floor (~0.15 on a quiet room mic, where
+    # hey_jarvis reads 0.000), so a fixed print gate would either spam every
+    # frame or hide real hits. Learn each engine's own quiet level for the
+    # first two seconds and report movement above it.
+    CALIBRATE = 25  # frames == 2 s
+    floors = {n: 0.0 for n in names}
+    peaks = {n: 0.0 for n in names}
+    seen, last_beat = 0, time.time()
+
     try:
         with sd.InputStream(
             samplerate=SAMPLE_RATE, channels=1, dtype="int16", blocksize=CHUNK
@@ -320,18 +342,34 @@ def _compare() -> None:
                     else:
                         d = e[1].predict(frame)
                         s = max(d.values()) if d else 0.0
-                    e[3] = s
-                    peaks[e[0]] = max(peaks[e[0]], s)
                     row.append(s)
-                if max(row) > 0.15:  # only print when something is happening
+
+                seen += 1
+                if seen <= CALIBRATE:
+                    for n, s in zip(names, row):
+                        floors[n] = max(floors[n], s)
+                    if seen == CALIBRATE:
+                        lv = "  ".join(f"{n}={floors[n]:.2f}" for n in names)
+                        print(f"  quiet-room floor: {lv}\n")
+                    continue
+
+                for n, s in zip(names, row):
+                    peaks[n] = max(peaks[n], s)
+
+                notable = any(s > max(floors[n] + 0.12, 0.30) for n, s in zip(names, row))
+                if notable:
                     cells = "  ".join(
                         f"{s:>12.3f}{'*' if s > e[2] else ' '}" for s, e in zip(row, engines)
                     )
                     print(f"  {cells}")
+                    last_beat = time.time()
+                elif time.time() - last_beat > 10:
+                    print(f"  ... listening (quiet) {time.strftime('%H:%M:%S')}")
+                    last_beat = time.time()
     except KeyboardInterrupt:
-        print("\n  peak scores this session:")
-        for name, p in peaks.items():
-            print(f"    {name:<12} {p:.3f}")
+        print("\n  quiet-room floor / peak this session:")
+        for n in names:
+            print(f"    {n:<12} floor {floors[n]:.3f}   peak {peaks[n]:.3f}")
         print("\n  Pick a threshold BELOW your lowest 'hey divya' peak, and")
         print("  ABOVE anything ordinary speech reached. Put it in THRESHOLDS.")
 
