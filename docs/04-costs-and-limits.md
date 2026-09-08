@@ -88,11 +88,33 @@ The bot has your mail, your browser session, your messages.
 Lock the Telegram bot to your user ID alone. Do not let the model type
 passwords — `cua-driver` already blocks some of this; use browser autofill.
 
-### 5. Free-tier rate limits mid-task — MEDIUM
-Flash free tier is rate-limited per minute and per day.
+### 5. Vertex rate limits — MEDIUM, and confirmed real
 
-*Mitigation:* retry with backoff, then fall back to paid Flash, then tell you.
-Never fail silently.
+**Hit for real on 2026-09-08** after ~20 agent runs in an afternoon:
+
+```
+429 RESOURCE_EXHAUSTED — Resource exhausted. Please try again later.
+```
+
+One Hermes run died with `max_retries_exhausted` and recorded
+`completed: false, failed: true`.
+
+**It is a per-minute limit, not a daily one.** Measured: 429 at ~15:33, clean
+`200`s at ~15:40 — recovery in minutes. Vertex meters Gemini as *tokens per
+minute per base model*, so bursts fail and then clear.
+
+**What this means in practice:** it will not bite normal use — a handful of
+tasks a day is nowhere near it. It bit us because a measurement session fires
+runs back to back. If it becomes a problem:
+
+- raise Hermes's retry/backoff so a burst waits instead of dying
+- space scheduled tasks apart rather than firing them together
+- request a quota increase (**not available on trial billing** — see D4)
+
+**The trap it created:** the failed run reported **10 API calls and $0**, which
+looks like a spectacular optimisation win. It was a crash. This is the second
+time a failed run nearly got recorded as a success — always read `completed` /
+`failed` before quoting a number.
 
 ### 6. Silent breakage — MEDIUM
 Windows updates, Chrome updates, WhatsApp changes. Something will break.
