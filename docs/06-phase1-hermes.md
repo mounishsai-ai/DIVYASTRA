@@ -459,35 +459,43 @@ Across five successful clicking runs:
 it has resisted every attempt to reduce it, and it is now measured under both
 conditions rather than assumed.
 
-#### Browser vs desktop — measured
+#### Browser vs desktop — CORRECTED after the grant bug
 
-Hypothesis: browser tasks would be cheaper than desktop tasks, since a page
-snapshot with refs looked more efficient than re-walking a UIA tree per click.
+First measurement said browser was ~2x worse than desktop. **That was an
+artifact of my own misconfiguration** — the existing-profile grant was on the
+client instead of the daemon, so `browser_prepare` was refused and the agent
+spent its turns working around a permission error (see
+[05-phase0-findings.md](05-phase0-findings.md)).
 
-**Wrong.** Same model, idle machine, both correct:
+Re-measured with the grant fixed, identical task, both correct:
 
-| Task | Calls | Cost | Wall time |
+| Run | Calls | Cost | Wall time |
 |---|---|---|---|
-| Desktop (Calculator, 4 clicks) | 21–39 | $0.19–0.47 | 2.5–4 min |
-| **Browser (Wikipedia lookup)** | **76** | **$0.62** | **11.7 min** |
+| browser, **grant broken** | 76 | $0.618 | 705 s |
+| browser, **grant fixed** | **45** | **$0.368** | **421 s** |
 
-**Browser is ~2x worse.** Reasons visible in the run:
+**~40% better on every axis** once the bug was gone.
 
-- Browser tools are **gated** — `check_browser_* returned False; dependent
-  tools will be unavailable` until `browser_prepare` succeeds, so the agent has
-  to discover the setup step.
-- **Page snapshots are much bigger** than a small app's UIA tree. An unbounded
-  Wikipedia snapshot measured ~25,000 tokens earlier in Phase 0.
-- **Every navigation invalidates refs**, so the snapshot-per-action tax applies
-  here too — on larger payloads.
+**Like-for-like against desktop** (neither batched):
 
-The prediction came from watching Opus 5 drive a browser in ~6 calls in Claude
-Code. That was a statement about **the model**, not the tool. On Gemini Flash the
-ordering reverses.
+| Path | Calls | Cost |
+|---|---|---|
+| desktop, unbatched | 21–39 | $0.19–0.47 |
+| **browser, unbatched, fixed** | **45** | **$0.368** |
 
-**Consequence:** for anything web-shaped, an HTTP request or an official API is
-worth real money compared to driving the page. Gmail has an API; the browser limb
-should not be how DIVYASTRA reads mail.
+**They are comparable.** Browser sits at the top of the desktop range, not in a
+different league. The earlier "browser is the most expensive GUI path" claim is
+**withdrawn** — it measured a bug, not the browser.
+
+**Not yet tried on the browser: batching.** It cut desktop from 21–39 to a fixed
+14. Page navigation invalidates refs so it cannot apply across a navigation, but
+within one page it should. Untested.
+
+**One operational catch, found the hard way:** Chrome shows a native
+**"Allow remote debugging?"** consent dialog, and *the driver cannot click it* —
+that is the entire point of the dialog. An unattended run will sit waiting for a
+human. **The browser limb needs a person present the first time**, which matters
+for anything scheduled.
 
 #### Attempt: a stronger model (Gemini 3.1 Pro)
 

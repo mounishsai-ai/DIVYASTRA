@@ -229,36 +229,24 @@ that; five separate attempts failed to (see
 The tool built for driving GUIs tells you not to drive a GUI when you have an
 alternative. **Take that seriously.**
 
-**The ladder, cheapest first — now measured, not assumed:**
+**The ladder, cheapest first — measured:**
 
-| Approach | Measured cost | Wall time | Use when |
-|---|---|---|---|
-| API / CLI / file | **~$0** | seconds | An interface exists. Gmail has an API — do not click Gmail. |
-| Desktop UIA | **$0.19–0.47** | 2.5–4 min | A native app with no other way in |
-| **Browser (CDP)** | **$0.62** | **12 min** | A web page with no API — **the most expensive GUI path** |
-| Pixel clicking | worst | — | Never, unless the tree lies |
+| Approach | Measured cost | Use when |
+|---|---|---|
+| API / CLI / file | **~$0** | An interface exists. Gmail has an API — do not click Gmail. |
+| Desktop UIA, batched | **$0.12** (14 calls) | Native app, stable UI |
+| Desktop UIA, plain | $0.19–0.47 (21–39) | Native app |
+| Browser (CDP) | $0.37 (45 calls) | A web page with no API |
+| Pixel clicking | worst | Never, unless the tree lies |
 
-> **Browser is worse than desktop, not better.** I predicted the opposite —
-> reasoning that a page snapshot with refs would beat re-walking a UIA tree.
-> Measured on the identical model: a Wikipedia lookup took **76 calls / $0.62 /
-> 12 minutes**, versus **21–39 calls / $0.19–0.47 / 2.5–4 min** for the
-> Calculator task. Browser tools are gated behind `browser_prepare` (the agent
-> must discover that), page snapshots are far larger than a small app's UIA
-> tree, and every navigation invalidates refs — the same snapshot-per-action tax
-> as the desktop, on bigger payloads.
+> **Desktop and browser are comparable**, once configured correctly. An earlier
+> claim that browser was ~2x worse measured a permission bug of ours, not the
+> browser — see [06-phase1-hermes.md](06-phase1-hermes.md). What separates the
+> rows that matter is **API vs GUI**, not desktop vs browser.
 >
-> The prediction came from watching *Opus 5* drive a browser in ~6 calls. That
-> is a statement about the model, not the tool.
-
-**Design rule:** reach for the desktop limb when there is genuinely no other
-door — not because it is the general-purpose one. A capability that clicks
-through a GUI every morning is a capability that should have been an API call
-or a script.
-
-This is the same conclusion the cost work reached from the other direction, and
-it is why `capabilities/` matters more than it first appeared.
-
----
+> **Browser has one extra cost that does not show up in tokens:** Chrome
+> requires a human to click "Allow remote debugging?" and no agent can click it
+> for you. Unattended browser work needs that consent already granted.
 
 ### Desktop: why `cua-driver`
 
