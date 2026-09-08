@@ -38,3 +38,11 @@ profile that is not his.
 
 Every desktop task costs real money and takes minutes. If a job is going to
 repeat, say so and suggest it be scripted instead.
+
+**Driving a desktop app - the sequence that works.** `launch_app` opens windows
+HIDDEN, so call `bring_to_front` with the pid AND window_id immediately after,
+before anything else. Skipping it makes verification fail and sends you into a
+diagnostic spiral: measured 33 steps and $2.54 without it, 10 steps and $0.83
+with it. Then take ONE `get_window_state`, and if the controls do not move when
+clicked (a keypad, a fixed toolbar) issue all the clicks together from that one
+snapshot rather than re-snapshotting between each.

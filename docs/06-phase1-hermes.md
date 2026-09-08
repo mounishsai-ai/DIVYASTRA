@@ -639,6 +639,51 @@ Against the un-optimised baseline of 21–39 calls at $0.19–0.47, that is roug
 **40-60% cheaper and no longer variable**. Wall time is unchanged — this buys
 cost and predictability, not speed.
 
+#### THE REAL FIX, found by reading a trace (2026-09-08)
+
+Mounish asked: *"did you find the steps it takes, so we can analyse them and do
+better?"* Yes - and it broke the problem open.
+
+Captured a full step trace with `claude -p --output-format stream-json`. The
+shape was damning:
+
+| Steps | What happened |
+|---|---|
+| 1-11 | textbook: load skill, launch, **one** snapshot, four clicks, verify |
+| 12-22 | **thrashing** - three snapshots in a row, then `list_windows`, `set_window_frame`, `debug_window_info`, `list_apps` |
+| 23-33 | **relaunched the app and did the whole task again** on a new window |
+
+**It did the job twice.** About 60% of the run was recovery from one avoidable
+problem.
+
+**The cause, visible at step 22:** `launch_app` opens windows **hidden**
+(`SW_SHOWNOACTIVATE`, by design, so it does not steal focus). Verification then
+cannot see the window, the agent doubts itself, and spirals.
+
+**The fix is one call: `bring_to_front` immediately after `launch_app`.**
+
+| Claude | before | after |
+|---|---|---|
+| steps | 33 | **10** |
+| cost | $2.538 | **$0.827** |
+| time | 243 s | **83 s** |
+
+**And it transfers.** Written into `personality.md` -> `SOUL.md`, which both
+brains read, the *cheap* brain improved just as much on a plain prompt:
+
+| Gemini Flash | plain | batched | **+ knowledge** |
+|---|---|---|---|
+| calls | 21-39 | 14 | **11** |
+| cost | $0.19-0.47 | $0.115 | **$0.106** |
+| time | 147-402 s | 305-402 s | **127 s** |
+
+Every figure is the best recorded. **Nine tuning attempts moved nothing; one
+trace-read moved everything.**
+
+**The lesson worth keeping:** the wins were never in configuration. They were in
+*knowing how the tool behaves* - and that knowledge belongs in the persona, one
+file, where every brain reads it. Instrument first, tune second.
+
 #### Where that leaves Phase 1b
 
 **No cost improvement has been found.** Honest state after ~$4 of experiments:
