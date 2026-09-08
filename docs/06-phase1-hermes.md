@@ -459,6 +459,36 @@ Across five successful clicking runs:
 it has resisted every attempt to reduce it, and it is now measured under both
 conditions rather than assumed.
 
+#### Browser vs desktop — measured
+
+Hypothesis: browser tasks would be cheaper than desktop tasks, since a page
+snapshot with refs looked more efficient than re-walking a UIA tree per click.
+
+**Wrong.** Same model, idle machine, both correct:
+
+| Task | Calls | Cost | Wall time |
+|---|---|---|---|
+| Desktop (Calculator, 4 clicks) | 21–39 | $0.19–0.47 | 2.5–4 min |
+| **Browser (Wikipedia lookup)** | **76** | **$0.62** | **11.7 min** |
+
+**Browser is ~2x worse.** Reasons visible in the run:
+
+- Browser tools are **gated** — `check_browser_* returned False; dependent
+  tools will be unavailable` until `browser_prepare` succeeds, so the agent has
+  to discover the setup step.
+- **Page snapshots are much bigger** than a small app's UIA tree. An unbounded
+  Wikipedia snapshot measured ~25,000 tokens earlier in Phase 0.
+- **Every navigation invalidates refs**, so the snapshot-per-action tax applies
+  here too — on larger payloads.
+
+The prediction came from watching Opus 5 drive a browser in ~6 calls in Claude
+Code. That was a statement about **the model**, not the tool. On Gemini Flash the
+ordering reverses.
+
+**Consequence:** for anything web-shaped, an HTTP request or an official API is
+worth real money compared to driving the page. Gmail has an API; the browser limb
+should not be how DIVYASTRA reads mail.
+
 #### Where that leaves Phase 1b
 
 **No cost improvement has been found.** Honest state after ~$4 of experiments:

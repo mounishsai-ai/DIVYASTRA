@@ -229,14 +229,26 @@ that; five separate attempts failed to (see
 The tool built for driving GUIs tells you not to drive a GUI when you have an
 alternative. **Take that seriously.**
 
-**The ladder, cheapest first:**
+**The ladder, cheapest first — now measured, not assumed:**
 
-| Approach | Model cost | Use when |
-|---|---|---|
-| API / CLI / file | **~$0** | An interface exists. Gmail has an API — do not click Gmail. |
-| Browser tools (CDP) | low–medium | It is a web page and there is no API |
-| Desktop UIA | **~$0.30/task** | A native app with no other way in |
-| Pixel clicking | worst | Never, unless the tree lies |
+| Approach | Measured cost | Wall time | Use when |
+|---|---|---|---|
+| API / CLI / file | **~$0** | seconds | An interface exists. Gmail has an API — do not click Gmail. |
+| Desktop UIA | **$0.19–0.47** | 2.5–4 min | A native app with no other way in |
+| **Browser (CDP)** | **$0.62** | **12 min** | A web page with no API — **the most expensive GUI path** |
+| Pixel clicking | worst | — | Never, unless the tree lies |
+
+> **Browser is worse than desktop, not better.** I predicted the opposite —
+> reasoning that a page snapshot with refs would beat re-walking a UIA tree.
+> Measured on the identical model: a Wikipedia lookup took **76 calls / $0.62 /
+> 12 minutes**, versus **21–39 calls / $0.19–0.47 / 2.5–4 min** for the
+> Calculator task. Browser tools are gated behind `browser_prepare` (the agent
+> must discover that), page snapshots are far larger than a small app's UIA
+> tree, and every navigation invalidates refs — the same snapshot-per-action tax
+> as the desktop, on bigger payloads.
+>
+> The prediction came from watching *Opus 5* drive a browser in ~6 calls. That
+> is a statement about the model, not the tool.
 
 **Design rule:** reach for the desktop limb when there is genuinely no other
 door — not because it is the general-purpose one. A capability that clicks
