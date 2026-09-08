@@ -178,39 +178,55 @@ tokens, no coordinate drift, and it survives the window moving. Adopting
 screenshot-driving would be a downgrade, and it is the same pixel approach
 rejected in D1.
 
-**2. Should we use a Claude model as the brain, still driving `cua-driver`? Maybe — worth measuring.**
-That is a **model swap, not a tool swap**: one line of Hermes config, everything
-else unchanged.
+**2. Should we use a Claude model as the brain, still driving `cua-driver`? Blocked on cost.**
+It would be a **model swap, not a tool swap** — one line of Hermes config. But
+see below: it cannot be paid for with the GCP credit.
 
-**Verified on our project 2026-09-08 — Claude is served on Vertex AI:**
+**WRONG on first check — Mounish caught it.** An HTTP 200 on the *model
+metadata* endpoint looked like availability. It is not. The actual generation
+call fails:
 
 ```
-publishers/anthropic/models/claude-sonnet-5   -> HTTP 200
-publishers/anthropic/models/claude-haiku-4-5  -> HTTP 200
-publishers/anthropic/models/claude-opus-5     -> HTTP 200
+429 RESOURCE_EXHAUSTED
+Quota exceeded for global_online_prediction_requests_per_base_model
+with base model: anthropic-claude-haiku-4-5
 ```
 
-**This matters a lot:** it bills to the **same $290 GCP credit**, not out of
-pocket. (The $20/month Claude Agent SDK credit does **not** apply — that covers
-the Agent SDK and `claude -p`; Hermes calls the API directly.)
+Quota for Anthropic partner models on this project is **zero**, and Google's own
+free-trial documentation closes the loop:
 
-Cost per 1M tokens, against `gemini-3.8-flash` at **$0.75 / $3.75**:
+> "The $300 credit cannot be used for generative AI partner models that are
+> offered as managed APIs (model as a service)."
+
+The same page notes the trial **cannot request a quota increase**. So it is
+blocked three ways at once: no quota, credits explicitly exclude partner models,
+and the one escape hatch is unavailable on a trial account.
+
+**Therefore Claude on Vertex is not an option today.** Not "expensive" —
+unavailable.
+
+**The only real Claude path is the Anthropic API directly, paid out of pocket.**
+The $20/month Agent SDK credit does **not** apply (it covers the Agent SDK and
+`claude -p`; Hermes calls the API directly). Against `gemini-3.8-flash` at
+$0.75 / $3.75 per 1M:
 
 | Model | Input | Output | vs Flash |
 |---|---|---|---|
-| `claude-haiku-4-5` | $1.00 | $5.00 | **1.3x** |
+| `claude-haiku-4-5` | $1.00 | $5.00 | 1.3x |
 | `claude-sonnet-5` | $2.00 | $10.00 | 2.7x |
 | `claude-opus-5` | $5.00 | $25.00 | 6.7x |
 
-**The bet:** a stronger model may need proportionally *fewer turns*, and turns
-are what cost money (77% of spend is the re-sent conversation). Haiku 4.5 only
-needs to be ~25% more turn-efficient to break even; Sonnet 5 needs ~60% fewer
-turns.
+**Decision: stay on Gemini 3.8 Flash.** Not a preference — economics. It is
+covered by ~$290 of credit that is otherwise unspendable, while any Claude route
+is real money from a student's pocket. Revisit only if the credit runs out or a
+task genuinely fails on Flash.
 
-**Do not decide this on one run.** The same task varies **2.4x** run to run —
-any comparison needs 5+ runs per model, judged on **API call count** (much less
-noisy than cost). Until then, Gemini Flash stays the default: it works, and it
-is the cheapest per token.
+**The lesson (second time today):** a 200 on a metadata endpoint is not proof of
+access. Test the call that actually costs money.
+
+**If it ever is revisited:** do not decide on one run. The same task varies
+**2.4x** run to run, so any model comparison needs 5+ runs each, judged on **API
+call count** — far less noisy than cost.
 
 ---
 
