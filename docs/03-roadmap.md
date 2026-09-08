@@ -200,7 +200,11 @@ anything irreversible**.
 - [x] Swapping the TTS engine touches **only** `voice/tts.py`.
 - [x] **Persona live** — Hermes replied *"Hello Boss, I can control your
       desktop..."* and it was spoken in her voice. Brain -> speech works.
-- [ ] Round-trip: say something -> text within ~2 s (whisper.cpp, not built).
+- [x] **Round-trip works** - she prompts, you speak, she transcribes and
+      repeats it back. Heard `'Hello.'` from the real mic. Latency after you
+      stop talking is ~2.2 s (1.2 s silence detection + ~1 s transcription).
+      Transcription itself runs **faster than real time**: 1.37 s for 3.2 s of
+      audio.
 - [ ] Wake word runs one hour with **zero** false triggers, near-zero CPU.
 
 ---

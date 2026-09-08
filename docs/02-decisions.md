@@ -268,9 +268,15 @@ on your own machine.
 
 - **Kokoro-82M** (Apache-2.0): 82M params, ~327 MB, 54 voices, runs on CPU.
   The female voice for FRIDAY comes from here.
-- **whisper.cpp**: CPU-first, supports streaming partial results. Chosen over
-  faster-whisper, whose main advantage is NVIDIA int8 acceleration you cannot
-  use.
+- ~~**whisper.cpp**~~ -> **faster-whisper** (revised 2026-09-08). The original
+  reasoning was wrong: it claimed faster-whisper's advantage was *NVIDIA* int8
+  acceleration. In fact **int8 is exactly the CPU quantisation**, and
+  faster-whisper installs with one `pip` command, while whisper.cpp needs a
+  prebuilt binary or a C++ toolchain on Windows.
+
+  Measured on this laptop with `base.en` / int8: **1.37 s to transcribe 3.2 s of
+  audio** - comfortably faster than real time, no GPU. Model load is ~17 s but
+  happens once. Behind `stt.py`, so swapping back costs one file.
 - **openWakeWord**: free and offline. *Note:* code is Apache-2.0 but the
   **pretrained models are CC-BY-NC-SA 4.0 — non-commercial.** Fine for personal
   use; if DIVYASTRA ever ships to others, retrain or switch.
