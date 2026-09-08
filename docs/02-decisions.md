@@ -22,11 +22,35 @@ Install is one line, user-scoped, no runtime dependencies.
 - **UI-TARS (ByteDance)** — needs a 16 GB+ VRAM GPU to run its own vision
   model. You have Intel UHD integrated graphics. Physically impossible. Their
   hosted API would work but is another paid dependency.
-- **Microsoft UFO2** — genuinely excellent and Windows-native, with the best
-  research behind it (hybrid UIA + OmniParser detection). Rejected as a
-  *starting point* because it is a full multi-agent research framework, not a
-  library — adopting it means adopting its whole worldview, and OmniParser-v2
-  wants a GPU. **Revisit for ideas**, not as a dependency.
+- **Microsoft UFO2** — rejected as a *dependency* because it is a full
+  multi-agent research framework rather than a library, and OmniParser-v2 wants
+  a GPU. **That call still stands. The reasoning was lazy, and it cost us.**
+
+  > **Second thoughts, 2026-09-08.** The line "revisit for ideas" was written
+  > and then never acted on — while $6 and eight failed experiments went into
+  > problems UFO2 had already solved. Its two central ideas are precisely our
+  > two hardest problems:
+  >
+  > **1. "Unified GUI–API action layer"** — use the application's native API
+  > when one exists, fall back to the GUI otherwise. That is exactly the
+  > cheapest-first ladder we rediscovered the expensive way and wrote into
+  > [01-architecture.md](01-architecture.md).
+  >
+  > **2. "Speculative multi-action execution"** — one LLM query predicts
+  > *several* actions; each is validated against the Windows UIA
+  > (`is_enabled()`, `is_visible()`) **without a model call**; they execute in
+  > order and halt on the first failed precondition. Microsoft measured **up to
+  > 51.5% fewer completion steps** at comparable success rates. Their statement
+  > of the problem is verbatim the wall we hit: *"each automation step requires
+  > a full LLM inference for every single GUI action."*
+  >
+  > **We tested the idea and it works on our stack** — see
+  > [06-phase1-hermes.md](06-phase1-hermes.md). Batching clicks into one model
+  > turn cut calls from 21–39 to a **deterministic 14**.
+  >
+  > **Lesson:** "reject as a dependency" and "ignore the research" are different
+  > decisions. Read the paper of the thing you turn down, especially when it
+  > targets your hardest constraint.
 - **Agent-S3 (Simular)** — strong, cross-platform, but framework-shaped like
   UFO2. Same objection.
 - **Raw pyautogui** — clicks by pixel coordinate, steals your mouse, breaks on

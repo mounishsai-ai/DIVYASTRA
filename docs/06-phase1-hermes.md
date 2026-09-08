@@ -548,6 +548,46 @@ read.
 **This is the answer to "at least make it fast".** It cannot be fast. Not with
 this shape — a cloud model deciding every individual click.
 
+#### THE ONE THAT WORKED — speculative batching (borrowed from UFO2)
+
+Ninth attempt, first success. Taken from Microsoft's UFO2 paper, which we
+rejected as a dependency in D1 and then failed to mine for ideas.
+
+**The idea:** the snapshot-per-action tax exists because the model decides one
+action per round trip. But Calculator's buttons **do not move when clicked**, so
+element tokens stay valid. One snapshot can therefore authorise *several*
+actions, issued as **parallel tool calls in a single model turn**.
+
+Prompted the agent to do exactly that. Two runs, idle machine, both correct:
+
+| Approach | Calls | Cost | Wall time |
+|---|---|---|---|
+| plain (5 runs) | 21–39 | $0.19–0.47 | 147–473 s |
+| **batched, run 1** | **14** | **$0.150** | 305 s |
+| **batched, run 2** | **14** | **$0.115** | 402 s |
+
+**Two findings, one solid and one not:**
+
+- **Call count dropped to a deterministic 14.** Both runs, exactly. Previously
+  it varied 21–39. That is a structural change, not noise — and it is the first
+  thing in nine attempts to move the number.
+- **Cost fell ~40–60%**, to $0.115–0.15 from a ~$0.29 median.
+- **Wall time did NOT improve.** 305 s and 402 s sit inside the prior spread
+  (147–473 s), so speed is **inconclusive at best** and possibly worse — a
+  batched turn makes the model reason about four actions at once, which takes
+  longer per call. **This does not solve the speed problem.**
+
+**Why it works:** it removes model round trips without removing safety. UFO2
+validates each speculated action against UIA preconditions (`is_enabled()`,
+`is_visible()`) *before* executing — cheap, local, no model. We get a weaker
+version for free: `cua-driver` fails closed on a stale `element_token` rather
+than clicking the wrong thing.
+
+**Where it applies:** only when the UI is stable across the batch. Safe for a
+calculator keypad or a fixed toolbar; unsafe anywhere a click re-renders the
+tree (menus, dialogs, page navigation). **The agent has to know which case it is
+in** — which makes this guidance for `SOUL.md`, not a blanket setting.
+
 #### Where that leaves Phase 1b
 
 **No cost improvement has been found.** Honest state after ~$4 of experiments:
