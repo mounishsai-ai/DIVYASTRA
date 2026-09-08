@@ -5,11 +5,20 @@ a CPU-only laptop.
 
 ```
 kaggle kernels push -p divyastra/voice/training/kaggle --accelerator NvidiaTeslaT4
-kaggle kernels status mounishsai/hey-divya-wakeword
-kaggle kernels output mounishsai/hey-divya-wakeword -p <dir>
+kaggle kernels status mounishsai7/hey-divya-wakeword
+kaggle kernels output mounishsai7/hey-divya-wakeword -p <dir>
 ```
 
 ## Three gotchas, each of which cost time
+
+**0. The account must be PHONE VERIFIED, or you silently get a CPU worker.**
+This is the one that actually cost the time. Kaggle requires SMS verification
+before it will hand out GPU or TPU accelerators - and an unverified account does
+not get an error, it just runs on CPU. Worse, the signals all look fine:
+`kernel-metadata.json` comes back from the server with `enable_gpu: True`, and
+`quota_view()` reports the full 6 hours available with none used. **Neither of
+those proves the account is verified.** Verify at:
+notebook -> left sidebar -> Settings -> "Get phone verified".
 
 **1. `"enable_gpu": true` in `kernel-metadata.json` is NOT enough.** The first
 push ran on CPU regardless - the log said `nvidia-smi: not found` / `NO GPU`.
