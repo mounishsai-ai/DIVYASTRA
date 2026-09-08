@@ -22,27 +22,30 @@ switched it to Vertex AI as you asked, using your Google Cloud credits.
 
 ---
 
-## One security change you should see, not discover
+## Your own GCP project now (migrated this morning)
 
-**I created a service-account key on your Google Cloud account** — a long-lived
-credential now sitting on your disk at:
+DIVYASTRA no longer shares anything with `placement-agent` or `jarvix`:
+
+| | |
+|---|---|
+| Project | `divyastra-agent-37057` |
+| Service account | `divyastra-vertex@…` — `roles/aiplatform.user` only |
+| Key | `%LOCALAPPDATA%\hermes\divyastra-vertex-key.json` |
+
+**One thing you should know:** your billing account only allows **3 projects**
+and all 3 were taken. You said to revoke or delete Placement Agent — I
+**unlinked its billing rather than deleting it**. That frees the slot, keeps the
+project and all its data intact, and is one command to undo. Deleting wasn't
+needed.
+
+**Cleanup done:** the key I made on `jarvix-vertex` last night is **revoked**
+and its file deleted. That account is back exactly as you left it.
+
+**To revoke DIVYASTRA's access any time:**
 
 ```
-%LOCALAPPDATA%\hermes\vertex-sa-key.json
+gcloud iam service-accounts keys delete 13adbcacd231a134c92f60e4dbecdc9b81622bd5 --iam-account divyastra-vertex@divyastra-agent-37057.iam.gserviceaccount.com
 ```
-
-It's locked to your Windows account, stored outside this repo, and uses your
-existing `jarvix-vertex` service account with only `roles/aiplatform.user`.
-It was necessary — Vertex refuses Hermes's requests without it (why, below).
-
-**To revoke it whenever you want:**
-
-```
-gcloud iam service-accounts keys delete 80cf619ba9e6c6c7144dabfa37388fa220074f74 --iam-account jarvix-vertex@placement-agent-22587.iam.gserviceaccount.com
-```
-
-Then delete the file. DIVYASTRA stops working until it's replaced — nothing
-else breaks.
 
 ---
 
@@ -102,20 +105,49 @@ such header. That's why the key exists.
 
 ---
 
+## You were right about the prompt bloat
+
+You asked why we prompt a huge rulebook every time when Hermes has persistent
+memory. I measured it:
+
+| Hermes run from | System prompt |
+|---|---|
+| a neutral folder | 16,229 B |
+| **this project folder** | **25,237 B** |
+
+Hermes ingests `CLAUDE.md` from its working directory — **7,467 B of
+build-time documentation injected into every runtime call, a 55% bigger
+prompt.** That was a real design mistake and you caught it.
+
+The fix is a clean separation, now written into the architecture:
+
+- **`CLAUDE.md` + `docs/` = build time.** For Claude Code, while building.
+- **`SOUL.md` + Hermes memory = run time.** For DIVYASTRA. Where FRIDAY lives.
+- **Don't run Hermes with its working directory set to this repo.**
+
+**On facts vs RAG:** the flat block wins for one person, clearly. Hermes already
+caps its memory at ~1,300 tokens, and a static block is the ideal candidate for
+prompt caching (cached reads bill far below input rate). RAG would add an
+embedding call per query, a vector store to run, and the chance of retrieving
+the wrong thing — to solve a problem you don't have, since your facts fit
+easily. Revisit only if Hermes starts truncating things you needed.
+
+---
+
 ## Where things stand
 
 | Phase | Status |
 |---|---|
-| 0 — desktop + browser limbs | **done** (Gmail deferred by you) |
-| 1 — Hermes as the brain | **done** |
-| **1b — cost tuning** | **next, and it should be** |
-| 2 — Telegram (task from class) | needs a BotFather token + your user ID |
-| 3 — FRIDAY's voice | nothing blocking |
-| 4 — Twilio, real calls | needs a Twilio trial |
+| 0 — desktop + browser | done |
+| 1 — Hermes as the brain | done |
+| **1b — cost tuning** | **next** |
+| 2 — FRIDAY's voice | after that |
+| 3 — Twilio real calls | later |
+| 6 — WhatsApp (remote) | **last of the useful ones** |
 
-Phase 2 is the feature you actually described wanting. It's two steps away.
-
----
+**Telegram is dropped entirely**, and WhatsApp moved late — local first, remote
+later, as you said. Getting her working at your desk comes before reaching her
+from your phone.
 
 ## Nothing else needs you right now
 
