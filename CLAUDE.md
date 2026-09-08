@@ -62,28 +62,28 @@ to make that structurally impossible. Do not break them for convenience.
 
 ## Current phase
 
-> **Phase 2 — FRIDAY's voice.** *(in progress)*
+> **Phase 2 DONE — she is a working voice assistant.**
 >
-> Phases 0, 1 and 1b are done. Desktop control works and is tuned; the cost
-> question is settled and written up in
-> [docs/06-phase1-hermes.md](docs/06-phase1-hermes.md).
+> Verified live, one continuous loop:
+> `"hey jarvis"` -> wake (local, free) -> `"Yes?"` -> you speak -> transcribed
+> locally -> Hermes thinks (~$0.01) -> she answers **aloud in her own voice**.
 >
-> - [x] **Kokoro-82M installed** — local, CPU-only, no GPU, no network, no cost.
-> - [x] **Voice chosen: `af_jessica`**, after auditioning all 15 English female
->       voices on a long realistic status line.
-> - [x] **`divyastra/voice/tts.py`** — the TTS adapter. `speak(text)` is the
->       whole surface. Model load 1.3 s once; synthesis **3.2x faster than real
->       time**.
-> - [ ] `voice/stt.py` — whisper.cpp, listening.
-> - [ ] Wake word on "Divyastra" (openWakeWord).
-> - [ ] `SOUL.md` — who she is, separate from what she sounds like.
+> - [x] `voice/tts.py` — Kokoro `af_jessica`, 3.2x faster than real time.
+> - [x] `voice/stt.py` — faster-whisper `base.en`, 1.37 s for 3.2 s of audio.
+> - [x] `voice/wake.py` — `hey_jarvis`, **7.1% of one core idle**, pauses while
+>       the laptop is locked.
+> - [x] `voice/personality.md` -> Hermes `SOUL.md`. She calls him "Boss" only
+>       when addressing him.
+> - [x] `voice/assistant.py` — the always-on loop tying them together.
 >
-> **Voice is the first fast thing in this project.** Everything else waits on a
-> cloud model; this does not.
+> **Idle costs nothing, literally.** Waiting: 0 tokens. Woken but you said
+> nothing: 0 tokens. Only real words reach the brain.
 >
-> Open, not blocking: **Phase 1c** — the browser limb binds to whatever Chrome
-> is running instead of enforcing `Profile 8`. Privacy bug, must be fixed before
-> unattended browser use.
+> **Not yet started at logon** — she runs when launched by hand. Turning that on
+> means an always-on microphone listener, so it is opt-in, not assumed.
+>
+> **Next:** decide whether to enable autostart, then Phase 1c (browser profile
+> enforcement — a privacy bug) or Phase 3 (Twilio).
 
 ---
 
@@ -98,8 +98,8 @@ to make that structurally impossible. Do not break them for convenience.
 | Everyday brain | **Gemini 3.8 Flash on Vertex** (own GCP project) | ~$0.12/task batched |
 | Hard-task brain | **Claude Sonnet via Agent SDK** | $20/mo credit incl. in Pro |
 | Voice out (FRIDAY) | **Kokoro-82M**, voice `af_jessica`, local CPU | free |
-| Voice in | **whisper.cpp** local CPU | free |
-| Wake word | **openWakeWord** | free (non-commercial models) |
+| Voice in | **faster-whisper** `base.en`, local CPU | free |
+| Wake word | **openWakeWord** `hey_jarvis` (not "Divyastra" — see roadmap) | free (non-commercial models) |
 | Phone channel | **WhatsApp** (later) + **Twilio** (real calls) | free / ~$2/mo |
 | Telegram | **dropped** — WhatsApp is the only messaging channel | — |
 | Custom limbs | our own MCP servers | free |
