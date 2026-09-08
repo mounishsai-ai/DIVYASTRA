@@ -85,31 +85,46 @@ reversal in [02-decisions.md](02-decisions.md) for why.
 
 ---
 
-## Phase 1b — Cost tuning (do before Phase 2)
+## Phase 1b — Make repeated tasks free (revised after measurement)
 
-**Why this jumped the queue:** the Phase 1 test cost **$0.29 for one trivial
-task** (33 API calls). At that rate ~$290 of credit is ~1,000 tasks. Building
-Telegram on top of that would just make it easy to spend faster.
+> **The first version of this phase was wrong.** It assumed cost came from
+> oversized prompts, and proposed trimming tool schemas and toolsets. Measured:
+> **no effect.** Worse, the task cost varies **2.4x run to run**, so single-run
+> A/B testing cannot detect anything. Full log in
+> [06-phase1-hermes.md](06-phase1-hermes.md). Cost of finding out: ~$2.30.
 
-The cause is measured, not guessed: a 25 KB system prompt plus 35 KB of tool
-schemas for the built-in tools, before cua-driver adds ~57 more — all re-sent
-every call.
+**What the measurement actually showed:** 77% of spend is *uncached input* — the
+conversation tail re-sent on every call. Cost scales with **number of turns**,
+not prompt size. The static prefix was already cached at a tenth the rate.
+
+**So: don't make turns cheaper. Have fewer turns.**
+
+For a personal assistant this is very winnable, because the same tasks repeat
+daily. The agent loop should be for *figuring something out the first time*;
+after that it should be a recipe.
 
 **Steps**
-1. Write a cua-driver **capability manifest** exposing only the ~10 tools we
-   actually use. Cuts cost *and* blast radius in one change.
-2. Narrow toolsets with `-t`; drop `file`, `code_execution`, `browser-use`,
-   `tts`, `vision` for desktop tasks.
-3. Bound accessibility snapshots (`max_elements`, `query`) — the same lesson as
-   the browser side.
-4. Try `--reasoning` levels; the run spent 3,139 reasoning tokens.
+1. **Prove `replay_trajectory` works.** `cua-driver` can `start_recording` a
+   session and replay it deterministically. A replay makes **zero model calls**.
+   Record the Calculator task, replay it, confirm 72 and $0.00.
+2. **Decide the capture rule** — when does a successful run become a saved
+   recipe? Probably: any task run twice.
+3. **Look at Hermes `skills`** as the higher-level version, for procedures that
+   need a little judgement rather than identical clicks.
+4. **Only then** revisit per-turn cost, and only with **5+ runs per condition**,
+   because of the variance.
 
 **Acceptance**
-- [ ] The same Calculator task costs **under $0.05** — measure with
-      `hermes -z ... --usage-file`, do not estimate.
-- [ ] A written note of what each change actually saved, so the next tuning
-      round starts from data.
-- [ ] Nothing broke: the task still returns 72.
+- [ ] A recorded task replays correctly and costs **$0** in model calls.
+- [ ] A written rule for what becomes a recipe and what stays agentic.
+- [ ] The first-time (agentic) path still works — recipes are an addition, not a
+      replacement.
+
+**Already banked from attempt 1 (keep, even though cost-neutral):**
+- `mcp_servers.cua-driver.tools.include` — 57 tools cut to 18. No cost change,
+  but the agent can no longer reach `clipboard_read`, `kill_app`, `drag` or the
+  recording tools by accident. Safety win, so it stays.
+- Don't run Hermes with its cwd inside this repo.
 
 ---
 

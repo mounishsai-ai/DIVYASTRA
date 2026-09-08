@@ -263,23 +263,84 @@ accessibility trees accumulating in context**.
 4. **`--reasoning` level.** Gemini 3.x spends real tokens thinking — 3,139
    reasoning tokens in the Calculator run.
 
-### Two measurement gotchas found while trying to shortcut this
+### Phase 1b attempt 1 — FAILED, and the failure is the finding
 
-- **`hermes prompt-size` ignores `-t`.** Passing `-t terminal` or `-t clarify`
-  returns byte-for-byte the same report. It is a static description of the
-  default configuration, not a per-invocation preview.
-- **`prompt-size` excludes MCP tools.** It reports 20 tools / 35 KB — the
-  built-ins only. cua-driver's ~57 tools are *not* counted, so the real
-  per-call payload during the Calculator run was substantially larger than
-  that report suggests.
+Five runs of the *identical* Calculator task, one variable changed at a time:
 
-**Consequence: there is no free way to measure this.** Each tuning experiment
-costs a real run (~$0.29 at current settings). So Phase 1b should change one
-variable at a time and record `--usage-file` output for each, rather than
-changing several things and hoping.
+| # | Condition | Cost | API calls |
+|---|---|---|---|
+| 1 | baseline | $0.290 | 33 |
+| 2 | tool filtering (−84 KB) + neutral cwd (−7.5 KB) | $0.290 | 30 |
+| 3 | + `compression.threshold_tokens: 40000` | $0.503 | 54 |
+| 4 | + prompt telling it to skip screenshots | $0.706 | 60 |
+| 5 | **control: identical config and prompt to #2** | **$0.472** | 39 |
 
-**None of this was done tonight.** It is a roadmap item of its own, because
-doing it properly needs measurement, not guessing.
+**Run 5 is the important one.** Same config, same prompt as run 2, and the cost
+went from $0.290 to $0.472. Nothing changed but the dice.
+
+**The task cost varies 2.4x run to run.** Every "result" above is inside the
+noise. The A/B method was invalid — you cannot detect a 20% improvement when the
+noise is 140%. Published work saw the same thing: *"runs on the same task varied
+by as much as 30x in total token use."*
+
+**Cost of learning this: about $2.30 of credit.** Cheap for the lesson.
+
+### What each attempt actually taught
+
+- **Tool-schema filtering (57 -> 18 tools, −84 KB/call): no measurable cost
+  effect.** The schemas were being prompt-cached at $0.075/1M — a tenth of the
+  input rate. **Kept anyway**, because it is a genuine safety win: the agent can
+  no longer reach `clipboard_read`, `kill_app`, `drag`, or the recording tools.
+  Cost-neutral, blast-radius-positive.
+- **Not running Hermes in the repo (−7.5 KB/call): no measurable effect**, same
+  caching reason. **Still correct** — build-time docs do not belong in runtime.
+- **Aggressive compaction: actively harmful.** It paid a summarisation call each
+  time it fired, then dropped context the agent still needed, so it re-snapshotted
+  and looped. Reverted.
+- **Telling it to skip screenshots: harmful.** The extra instructions appear to
+  have made it more cautious, not less.
+
+### Where the money actually goes
+
+The pricing tuple in Hermes's registry is `("0.75", "3.75", "0.075")` —
+input / output / **cached** per 1M. Applying it to run 2:
+
+| | tokens | cost | share |
+|---|---|---|---|
+| uncached input | 299,537 | $0.225 | **77%** |
+| cached input | 807,658 | $0.061 | 21% |
+| output | 1,480 | $0.006 | 2% |
+
+*(This also resolves the earlier caveat: the estimate is arithmetically correct,
+and cached reads are billed at the discounted rate.)*
+
+**77% is uncached input — the conversation tail.** Every call re-sends the whole
+history, so cost grows quadratically with turns. That is why shrinking the
+*static* prefix did nothing: the prefix was already cached; the growing tail is
+not. Published analysis agrees — in one study **63% of tokens came from tool
+results**, not schemas.
+
+### So the fix is architectural, not configuration
+
+Since cost scales with **number of turns**, the answer is not cheaper turns. It
+is **fewer turns** — and for a personal assistant, most tasks repeat.
+
+**Two mechanisms we already have and have not used:**
+
+1. **`cua-driver` ships `start_recording` / `replay_trajectory`.** Record a
+   working run once, replay it deterministically after that. A replay makes
+   **zero** model calls. This is exactly the pattern that a 2026 paper measured
+   at 93.3% token savings on daily repeated tasks and 99.98% on high-frequency
+   ones.
+2. **Hermes ships `skills`** — a known procedure captured once and re-run.
+
+**The principle:** the agent loop is for figuring something out *the first time*.
+Once it works, it should become a recipe. Paying an LLM to re-derive "click 8,
+click ×, click 9, click =" every single morning is the actual waste — not the
+tool schemas.
+
+That reframes Phase 1b entirely, and it is now the plan in
+[03-roadmap.md](03-roadmap.md).
 
 ### Budget guard added
 
