@@ -229,10 +229,40 @@ and the one escape hatch is unavailable on a trial account.
 **Therefore Claude on Vertex is not an option today.** Not "expensive" —
 unavailable.
 
-**The only real Claude path is the Anthropic API directly, paid out of pocket.**
-The $20/month Agent SDK credit does **not** apply (it covers the Agent SDK and
-`claude -p`; Hermes calls the API directly). Against `gemini-3.8-flash` at
-$0.75 / $3.75 per 1M:
+**CORRECTED 2026-09-08 - this section was wrong, and Mounish spotted it.**
+The line above said the credit "covers the Agent SDK and `claude -p`" and then
+concluded Claude was unusable. **`claude -p` IS the path.** Anthropic's own
+support page lists it explicitly:
+
+> The $20/month credit covers ... **"the `claude -p` command in Claude Code
+> (non-interactive mode)"** ... and third-party apps that authenticate through
+> the Agent SDK.
+
+So a script *can* invoke Claude as DIVYASTRA's brain, legitimately. Built and
+verified - `divyastra/brain/claude_cli.py`. What is **not** allowed is piping a
+subscription credential into a raw API call; shelling out to `claude -p` is a
+documented path.
+
+### Measured, because the arithmetic decides how it is used
+
+| Task | Claude via `claude -p` | Hermes + Gemini Flash |
+|---|---|---|
+| trivial reply | **$0.097** | $0.0088 |
+| Calculator (8x9) | **$1.343**, 12 turns, 97 s | $0.12, 14 turns, 147 s |
+
+**Claude is ~11x the cost and about 35% faster.** The floor is high because
+Claude Code loads a ~25,000-token system prompt on *every* invocation - even
+"reply with OK" costs ten cents.
+
+**At $20/month that is roughly 15 desktop tasks, or ~200 trivial replies.**
+
+**So: escalation brain, not the everyday one.** Gemini handles routine work;
+Claude is for tasks that are genuinely hard, novel, or that Gemini has already
+failed at. One Claude run at $1.34 beats four failed Gemini runs at $0.12 - but
+only when the task is actually hard.
+
+The remaining out-of-pocket option, for reference, against `gemini-3.8-flash`
+at $0.75 / $3.75 per 1M:
 
 | Model | Input | Output | vs Flash |
 |---|---|---|---|

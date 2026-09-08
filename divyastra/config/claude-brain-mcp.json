@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cua-driver": {
+      "command": "C:/Users/mouni/AppData/Local/Programs/Cua/cua-driver/bin/cua-driver.exe",
+      "args": ["mcp", "--grant", "existing-profile"]
+    }
+  }
+}
