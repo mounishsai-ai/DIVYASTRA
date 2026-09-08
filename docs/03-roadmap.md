@@ -183,16 +183,33 @@ part that makes it DIVYASTRA and not a generic agent.
 4. ~~openWakeWord on "Divyastra"~~ - **currently `hey_jarvis`.**
 
    openWakeWord ships only `alexa`, `hey_jarvis`, `hey_mycroft` and
-   `hey_rhasspy` pretrained. **"Divyastra" does not exist as a model.** Two ways
-   to get it, neither done:
+   `hey_rhasspy` pretrained. **"Divyastra"/"Divya" does not exist as a model.**
 
-   | Option | Cost | Effort |
+   **Researched properly 2026-09-08 - one of the two routes is now dead:**
+
+   | Route | Status | Real time cost |
    |---|---|---|
-   | Train a custom openWakeWord model | free | synthetic data + training, hours, wants a GPU (Colab) |
-   | Picovoice Porcupine custom keyword | free tier, personal use | minutes in their web console |
+   | ~~Picovoice Porcupine~~ | **free tier discontinued 30 Jun 2026** | paid only |
+   | openWakeWord custom training | free, viable | **4-8 h GPU training**, plus setup |
+   | LiveKit single-command trainer | unverified, worth checking first | unknown |
 
-   `hey_jarvis` is thematically fine and works today, so this is not blocking.
-   Swapping later is one line - `WAKE_WORD` in `wake.py`.
+   openWakeWord's own pipeline needs synthetic speech, room impulse responses
+   and background noise, then an Optuna-tuned GPU training run of **4-8 hours**.
+   Our Intel UHD cannot do that - it means Google Colab's free GPU, and the
+   community reports those notebooks "frequently break".
+
+   **Realistic estimate: one evening of attention spread across a day**, most of
+   it waiting. Not hard, just long and fiddly.
+
+   **One asset we already have:** Kokoro, with 54 voices, is exactly the
+   synthetic-speech generator this training needs. That removes the data
+   -generation step most people struggle with.
+
+   **A design warning about the word itself.** Short wake words false-fire more,
+   because there is less sound to match. Every pretrained model is 3+ syllables
+   (`hey jarvis`, `hey mycroft`, `alexa`). **"Divya" is 2 syllables and will
+   perform noticeably worse than "hey Divya"** - the "hey" is doing real
+   acoustic work, not just politeness.
 
    **Threshold matters more than the word.** Measured on Mounish's natural
    speaking voice: 0.49 / 0.29 / 0.42 - the default 0.5 caught **none**. Set to
