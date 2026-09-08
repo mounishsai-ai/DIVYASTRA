@@ -1,0 +1,13 @@
+{
+  "aut": 0.005289684397827308,
+  "fpph": 30.679902603483796,
+  "recall": 0.975,
+  "accuracy": 0.9789778048323656,
+  "threshold": 0.5,
+  "optimal_threshold": 0.88,
+  "optimal_recall": 0.8885,
+  "optimal_fpph": 0.16857089342573514,
+  "n_positive": 2000,
+  "n_negative": 32034,
+  "validation_hours": 17.8
+}

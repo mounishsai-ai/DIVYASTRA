@@ -100,8 +100,8 @@ def main() -> None:
     print("DIVYASTRA - loading models...")
     tts._get_engine()
     stt._get_model()
-    wake._get_model()
-    print(f"ready. wake word: '{wake.WAKE_WORD}' (threshold {wake.THRESHOLD})")
+    wake.load()
+    print(f"ready. wake word: '{wake.WAKE_WORD}' (threshold {wake.threshold()})")
     print("listening. Ctrl+C to stop.\n")
     tts.speak("Systems online.")
 

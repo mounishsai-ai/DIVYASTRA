@@ -38,3 +38,14 @@ divyastra/voice/training/.venv/
 kaggle.json
 *.pem
 *.p12
+
+# Wake-word training output: ~75MB of synthetic test audio and feature dumps.
+# The trained model itself is copied into voice/models/ and committed there.
+divyastra/voice/training/output/
+divyastra/voice/training/.venv/
+
+# ...but our own wake-word model is small (161 KB) and is the build output of a
+# GPU training run we do not want to repeat. Keep it, and its evidence.
+!divyastra/voice/models/hey_divya.onnx
+!divyastra/voice/models/hey_divya_eval.json
+!divyastra/voice/models/hey_divya_det.png
