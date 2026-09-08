@@ -418,6 +418,47 @@ answer is not a data point — it is a shorter run. This document had already
 written down "a cheap wrong answer is not a win" one paragraph earlier, and the
 comparison was made anyway.
 
+#### Controlled runs — was it interference?
+
+Mounish pointed out a real confound: during every earlier test he was **using
+the machine** — switching virtual desktops, moving the Calculator window,
+browsing in another window. That should invalidate snapshots and fight
+foreground delivery. **I had not controlled the environment at all.**
+
+Re-ran the identical baseline task twice with the machine idle and no human
+input:
+
+| Run | Environment | Calls | Cost | Wall time | Result |
+|---|---|---|---|---|---|
+| 1 | in use | 33 | $0.290 | — | 72 |
+| 2 | in use | 30 | $0.290 | — | 72 |
+| 5 | in use | 39 | $0.472 | — | 72 |
+| **A** | **idle** | **37** | **$0.373** | 248 s | 72 |
+| **B** | **idle** | **21** | **$0.186** | 147 s | 72 |
+
+**Verdict: interference was not the dominant factor.** Idle runs land inside the
+same band (21–39 calls) as in-use runs (30–39). But the *cheapest* successful
+run of the whole exercise was an idle one, so keeping hands off does not hurt.
+
+**Variance is inherent, not environmental** — 1.8x spread across two idle runs
+with everything else held constant. It is model non-determinism.
+
+**Also worth correcting a misreading:** the 149-call run was the **keyboard**
+approach, not clicking. Accessibility-tree clicking has never exceeded 39 calls
+in any run, clean or dirty.
+
+#### The real number
+
+Across five successful clicking runs:
+
+- **21–39 API calls**, median ~33
+- **$0.19–0.47**, median ~$0.29
+- **2.5–4 minutes** wall time
+
+**Call that $0.30 and three minutes for a novel desktop task.** It is the price,
+it has resisted every attempt to reduce it, and it is now measured under both
+conditions rather than assumed.
+
 #### Where that leaves Phase 1b
 
 **No cost improvement has been found.** Honest state after ~$4 of experiments:
