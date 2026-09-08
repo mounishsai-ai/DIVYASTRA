@@ -588,6 +588,49 @@ calculator keypad or a fixed toolbar; unsafe anywhere a click re-renders the
 tree (menus, dialogs, page navigation). **The agent has to know which case it is
 in** — which makes this guidance for `SOUL.md`, not a blanket setting.
 
+#### Dead end: suppressing the screenshot
+
+`get_window_state` returns **both** an accessibility tree and a screenshot by
+default. The image looked like obvious waste for a calculator — the tree has
+every button by name. Three runs say otherwise:
+
+| Run | Calls | Cost | Wall time |
+|---|---|---|---|
+| batched, screenshot ON | **14** | **$0.115–0.150** | 305–402 s |
+| `include_screenshot=false` (early test) | 60 | $0.706 | — |
+| **batched + `include_screenshot=false`** | **75** | **$0.999** | **1376 s (23 min)** |
+
+**Adding screenshot suppression to the winning batched config turned 14 calls
+into 75.** A 5x regression, and the worst run of the entire project.
+
+**The screenshot is load-bearing.** The driver's own documentation says so and I
+read past it:
+
+> "Always returns BOTH the element tree AND a screenshot — ground on both and
+> cross-check (**the tree lies on some surfaces**)."
+
+Without the image the model loses its cross-check, grows unsure of the tree, and
+re-reads it over and over. The token "saving" per call is dwarfed by the extra
+calls.
+
+**Rule: never pass `include_screenshot=false` to save tokens.** It is a
+correctness input, not decoration. The only legitimate use is a deliberate
+tree-only re-index where the visual state is already known.
+
+#### The winning desktop configuration
+
+After nine attempts, exactly one thing works, and it does not combine with
+anything else tried:
+
+```
+batched parallel clicks + screenshots ON + a plain prompt
+-> 14 API calls, $0.115-0.150, deterministic across runs
+```
+
+Against the un-optimised baseline of 21–39 calls at $0.19–0.47, that is roughly
+**40-60% cheaper and no longer variable**. Wall time is unchanged — this buys
+cost and predictability, not speed.
+
 #### Where that leaves Phase 1b
 
 **No cost improvement has been found.** Honest state after ~$4 of experiments:
