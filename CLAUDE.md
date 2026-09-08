@@ -62,22 +62,28 @@ to make that structurally impossible. Do not break them for convenience.
 
 ## Current phase
 
-> **Phase 1 DONE. Next: Phase 1b — cost tuning.**
+> **Phase 2 — FRIDAY's voice.** *(in progress)*
 >
-> The whole stack works end to end. Hermes launched Calculator on its own,
-> clicked `8 x 9 =` through the accessibility tree and read back **72** —
-> Hermes -> Gemini 3.8 Flash on **Vertex AI** -> cua-driver -> Windows.
-> Phase 0 (desktop + browser) is closed; Gmail deferred.
+> Phases 0, 1 and 1b are done. Desktop control works and is tuned; the cost
+> question is settled and written up in
+> [docs/06-phase1-hermes.md](docs/06-phase1-hermes.md).
 >
-> **The problem: that task cost $0.29** across 33 API calls. ~$290 of credit is
-> only ~1,000 tasks. Cause measured, not guessed: 25 KB system prompt + 35 KB of
-> tool schemas, before cua-driver adds ~57 more tools, all re-sent every call.
+> - [x] **Kokoro-82M installed** — local, CPU-only, no GPU, no network, no cost.
+> - [x] **Voice chosen: `af_jessica`**, after auditioning all 15 English female
+>       voices on a long realistic status line.
+> - [x] **`divyastra/voice/tts.py`** — the TTS adapter. `speak(text)` is the
+>       whole surface. Model load 1.3 s once; synthesis **3.2x faster than real
+>       time**.
+> - [ ] `voice/stt.py` — whisper.cpp, listening.
+> - [ ] Wake word on "Divyastra" (openWakeWord).
+> - [ ] `SOUL.md` — who she is, separate from what she sounds like.
 >
-> **Phase 1b fixes that before building anything else on top** — a cua-driver
-> capability manifest (cost *and* safety), narrower toolsets, bounded snapshots.
-> Target: the same task under $0.05, measured with `--usage-file`.
+> **Voice is the first fast thing in this project.** Everything else waits on a
+> cloud model; this does not.
 >
-> Details: [docs/06-phase1-hermes.md](docs/06-phase1-hermes.md).
+> Open, not blocking: **Phase 1c** — the browser limb binds to whatever Chrome
+> is running instead of enforcing `Profile 8`. Privacy bug, must be fixed before
+> unattended browser use.
 
 ---
 
@@ -89,9 +95,9 @@ to make that structurally impossible. Do not break them for convenience.
 | Desktop control | **cua-driver** 0.24.0 — installed & verified | free |
 | Browser control | **cua-driver `browser_*` tools** (CDP) | free |
 | Mail | **Gmail MCP server** + Google OAuth | free |
-| Everyday brain | **Gemini 3.8 Flash on Vertex** (own GCP project) | ~$0.29/task — see 1b |
+| Everyday brain | **Gemini 3.8 Flash on Vertex** (own GCP project) | ~$0.12/task batched |
 | Hard-task brain | **Claude Sonnet via Agent SDK** | $20/mo credit incl. in Pro |
-| Voice out (FRIDAY) | **Kokoro-82M** TTS, local CPU | free |
+| Voice out (FRIDAY) | **Kokoro-82M**, voice `af_jessica`, local CPU | free |
 | Voice in | **whisper.cpp** local CPU | free |
 | Wake word | **openWakeWord** | free (non-commercial models) |
 | Phone channel | **WhatsApp** (later) + **Twilio** (real calls) | free / ~$2/mo |

@@ -25,3 +25,6 @@ models/
 *.onnx
 *.bin
 *.gguf
+
+# generated audio - regenerable, large
+divyastra/voice/samples/
