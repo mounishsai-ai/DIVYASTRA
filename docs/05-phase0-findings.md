@@ -260,3 +260,67 @@ right limb for DIVYASTRA. It works only inside Claude — Hermes cannot use it.
 DIVYASTRA needs a **standalone Gmail MCP server** with its own Google Cloud
 OAuth client. The connector can satisfy the Phase 0 checkbox, but the real limb
 is separate work.
+
+
+---
+
+## BUG (found 2026-09-08): the browser grant was on the wrong process
+
+**Every browser attach to the logged-in Chrome profile has been refused since
+Phase 0**, and it went unnoticed because the agent silently fell back to slower
+paths.
+
+`.mcp.json` passes `--grant existing-profile` to `cua-driver mcp`. **But `mcp` is
+only a client.** The permission mode and grants belong to the **daemon**, and the
+autostart task runs bare `serve`:
+
+```
+Start-Process ... cua-driver.exe -ArgumentList 'serve'      <-- no grant
+```
+
+The installer said so and I read past it: *"Add the same flag to `serve` when
+using a long-running daemon."*
+
+**Symptom** — `browser_prepare` refuses:
+
+```
+browser_consent_required: existing-profile attachment in standard mode
+requires --grant existing-profile or an embedding authorization host
+```
+
+**Proof of fix** — restart the daemon with the grant and the same call succeeds
+in **3.2 seconds**:
+
+```powershell
+cua-driver stop
+Start-Process cua-driver.exe -ArgumentList 'serve','--grant','existing-profile' -WindowStyle Hidden
+```
+
+**Making it permanent needs one elevated command**, because the autostart task
+was registered at `RunLevel=Highest` and a normal process cannot edit it. In an
+**Administrator** PowerShell:
+
+```powershell
+$exe = "C:\Users\mouni\AppData\Local\Programs\Cua\cua-driver\bin\cua-driver.exe"
+$a = New-ScheduledTaskAction -Execute "powershell.exe" -Argument (
+  "-NoProfile -WindowStyle Hidden -NonInteractive -Command `"Start-Process -FilePath '$exe' " +
+  "-ArgumentList 'serve','--grant','existing-profile' -WindowStyle Hidden -WorkingDirectory 'C:\Users\mouni'`"")
+Set-ScheduledTask -TaskName "cua-driver-serve" -Action $a
+```
+
+Until that is run, the daemon must be started by hand after each logon, or the
+browser limb quietly degrades again.
+
+**Two lessons:**
+
+1. **A flag accepted without error is not a flag that took effect.** `mcp`
+   swallowed `--grant existing-profile` happily and it did nothing.
+2. **This is why the browser measured so badly.** The 76-call / $0.62 / 12-minute
+   baseline was an agent working around a permission refusal, not the browser
+   path's real cost. Every browser conclusion drawn before this fix is suspect.
+
+## Also: the daemon can die silently
+
+`cua-driver autostart status` reported `registered (not running)` mid-session.
+When the daemon is down, every tool call fails and an agent will burn turns
+discovering that. **Check `autostart status` before trusting a bad measurement.**
