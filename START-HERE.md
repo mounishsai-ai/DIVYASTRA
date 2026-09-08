@@ -31,6 +31,25 @@ it is a five-minute job.
 
 ---
 
+## Waiting on: the wake word (training on Kaggle GPU)
+
+A run is in flight. To collect it whenever you come back:
+
+```
+divyastra\voice\training\.venv\Scripts\kaggle.exe kernels status mounishsai7/hey-divya-wakeword
+divyastra\voice\training\.venv\Scripts\kaggle.exe kernels output mounishsai7/hey-divya-wakeword -p divyastra\voice\training\output\kaggle
+```
+
+**The number that matters is false-wakes-per-hour.** The local calibration run
+managed 16.4/h at 78% recall, which is unusable. Under ~1/h and it is worth
+swapping in - one line in `voice/wake.py` plus the model path.
+
+If it is still bad, `hey_jarvis` keeps working and nothing is blocked.
+
+**Expire the Kaggle token** once the model is downloaded.
+
+---
+
 ## What everything costs
 
 | State | Cost |
