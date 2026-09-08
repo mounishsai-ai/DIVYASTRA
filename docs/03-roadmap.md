@@ -103,22 +103,44 @@ For a personal assistant this is very winnable, because the same tasks repeat
 daily. The agent loop should be for *figuring something out the first time*;
 after that it should be a recipe.
 
+> **Second correction, same day.** The step below originally said "record a
+> trajectory and replay it for free". Reading `RECORDING.md` properly kills
+> that: **`replay_trajectory` cannot replay accessibility-tree actions.**
+> `element_index` is assigned fresh per snapshot and keyed on `(pid,
+> window_id)`, both of which change between sessions, and read-only tools like
+> `get_window_state` are not recorded so replay cannot re-emit the snapshot.
+> Only **pixel clicks and keyboard input** replay — and pixel-clicking is
+> precisely the brittle approach rejected in D1. The docs say it plainly: use
+> it "as a regression artifact rather than a re-driving script."
+
+**So the honest answer is a three-way split by how often a task runs:**
+
+| How often | Approach | Model cost |
+|---|---|---|
+| Once / rarely | agent loop, let it figure things out | ~$0.30–0.70 |
+| Occasionally, varying | **Hermes skill** — a written procedure so it doesn't re-explore | reduced, not zero |
+| **Daily, identical** | **write a real limb** — deterministic code, no LLM | **$0** |
+
+The third row is the actual answer to "it costs too much", and it is what
+`capabilities/` was always for. **If you do a task every single morning, the
+right fix is code, not a cheaper prompt.** Checking a portal on a schedule
+should not involve a language model re-deriving how to click a login button.
+
 **Steps**
-1. **Prove `replay_trajectory` works.** `cua-driver` can `start_recording` a
-   session and replay it deterministically. A replay makes **zero model calls**.
-   Record the Calculator task, replay it, confirm 72 and $0.00.
-2. **Decide the capture rule** — when does a successful run become a saved
-   recipe? Probably: any task run twice.
-3. **Look at Hermes `skills`** as the higher-level version, for procedures that
-   need a little judgement rather than identical clicks.
-4. **Only then** revisit per-turn cost, and only with **5+ runs per condition**,
-   because of the variance.
+1. **Write one Hermes skill** for a task you actually repeat, and measure
+   whether it shortens the run. This is the cheapest thing to try.
+2. **Pick one genuinely daily task** and write it as a deterministic limb —
+   a small MCP server, plain code, no model in the loop.
+3. **Set expectations honestly:** the agentic path costs what it costs. Budget
+   for roughly $0.30–0.70 per novel desktop task and do not build habits that
+   run it in a loop.
+4. Revisit per-turn tuning **only** with 5+ runs per condition, given the 2.4x
+   variance.
 
 **Acceptance**
-- [ ] A recorded task replays correctly and costs **$0** in model calls.
-- [ ] A written rule for what becomes a recipe and what stays agentic.
-- [ ] The first-time (agentic) path still works — recipes are an addition, not a
-      replacement.
+- [ ] One repeated task runs with **no model calls at all**.
+- [ ] A written rule for which of the three rows a new task belongs in.
+- [ ] The agentic path still works for novel tasks.
 
 **Already banked from attempt 1 (keep, even though cost-neutral):**
 - `mcp_servers.cua-driver.tools.include` — 57 tools cut to 18. No cost change,

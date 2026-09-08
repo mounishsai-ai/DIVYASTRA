@@ -327,12 +327,19 @@ is **fewer turns** — and for a personal assistant, most tasks repeat.
 
 **Two mechanisms we already have and have not used:**
 
-1. **`cua-driver` ships `start_recording` / `replay_trajectory`.** Record a
-   working run once, replay it deterministically after that. A replay makes
-   **zero** model calls. This is exactly the pattern that a 2026 paper measured
-   at 93.3% token savings on daily repeated tasks and 99.98% on high-frequency
-   ones.
-2. **Hermes ships `skills`** — a known procedure captured once and re-run.
+1. ~~`cua-driver`'s `start_recording` / `replay_trajectory`.~~ **Checked the
+   docs: this does not work for our case.** `element_index` is assigned fresh
+   per snapshot and keyed on `(pid, window_id)` — both change between sessions —
+   and read-only tools like `get_window_state` are not recorded, so replay
+   cannot re-emit the snapshot it would need. Only pixel and keyboard actions
+   replay, and pixel-clicking is the brittle approach rejected in D1. It is a
+   regression-testing artifact, not a recipe engine.
+2. **Hermes `skills`** — a written procedure so the agent does not re-explore.
+   Reduces turns; does not eliminate them.
+3. **Deterministic limbs — the real answer for daily tasks.** Code, no model.
+   The 2026 paper reporting 93%+ savings on repeated tasks is describing exactly
+   this: compiling a proven trace into a branch-free recipe. For us that recipe
+   is a small MCP server, which is what `capabilities/` was always for.
 
 **The principle:** the agent loop is for figuring something out *the first time*.
 Once it works, it should become a recipe. Paying an LLM to re-derive "click 8,
