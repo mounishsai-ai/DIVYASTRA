@@ -113,26 +113,7 @@ every call.
 
 ---
 
-## Phase 2 — Telegram
-
-The feature you actually described: task from class, done at home.
-
-**Steps**
-1. BotFather → token. `@userinfobot` → your numeric user ID.
-2. `hermes gateway setup`, then `hermes gateway install` (registers a Windows
-   Scheduled Task at logon, non-elevated).
-3. Lock the allow-list to **your user ID only**.
-4. Voice notes in; text and voice replies out.
-
-**Acceptance**
-- [ ] Send a task from your phone; the laptop does it; a reply comes back.
-- [ ] Anyone else messaging the bot is refused.
-- [ ] Laptop asleep → task waits → runs on wake.
-- [ ] No public URL, no tunnel, no VPS anywhere in the setup.
-
----
-
-## Phase 3 — Her voice (FRIDAY)
+## Phase 2 — Her voice (FRIDAY)
 
 Hermes has a voice mode, but the *personality and voice* are ours — this is the
 part that makes it DIVYASTRA and not a generic agent.
@@ -152,7 +133,7 @@ part that makes it DIVYASTRA and not a generic agent.
 
 ---
 
-## Phase 4 — Twilio: it actually calls you
+## Phase 3 — Twilio: it actually calls you
 
 **Read the India rules in [02-decisions.md](02-decisions.md) D6 first.** Short
 version: rent an **international** number (Indian numbers cannot place these
@@ -162,7 +143,7 @@ calls), keep the volume low, and only ever call your own verified number.
 1. Twilio trial; verify your own mobile as a caller ID.
 2. Configure Hermes's built-in Twilio gateway.
 3. Call only on tasks you explicitly mark as call-worthy — everything else
-   stays on Telegram.
+   reports back through whatever channel asked.
 
 **Acceptance**
 - [ ] A finished task triggers a real ringing call, and you hear the result.
@@ -172,7 +153,7 @@ calls), keep the volume low, and only ever call your own verified number.
 
 ---
 
-## Phase 5 — Scheduling and initiative
+## Phase 4 — Scheduling and initiative
 
 Much of this is Hermes cron; the work is deciding *policy*, not building it.
 
@@ -194,7 +175,7 @@ Much of this is Hermes cron; the work is deciding *policy*, not building it.
 
 ---
 
-## Phase 6 — Custom limbs
+## Phase 5 — Custom limbs
 
 Only now, when the assistant already works, do we write our own code.
 
@@ -207,9 +188,27 @@ Only now, when the assistant already works, do we write our own code.
 
 ---
 
+## Phase 6 — WhatsApp (remote access)
+
+**Deliberately last of the useful phases.** Local first: get her working at the
+laptop, then make her reachable from the phone.
+
+Re-read D7 in [02-decisions.md](02-decisions.md) before starting — unofficial
+WhatsApp Web bridges violate WhatsApp's Terms of Service and accounts get
+banned. Hermes ships both an unofficial `whatsapp` gateway and an official
+`whatsapp-cloud` one; prefer the official route, and never use the primary
+number on the unofficial one.
+
+**Acceptance**
+- [ ] A voice note from the phone runs a task on the laptop and replies.
+- [ ] Only your number is accepted.
+- [ ] Nothing else in the system changed to add it.
+
+---
+
 ## Phase 7 — Gestures (stretch)
 
-Only after 0–6 are green.
+Only after everything above is green.
 
 1. MediaPipe Hands on the webcam, CPU.
 2. Pinch → click, behind a hotkey so it is never always-on.
@@ -228,7 +227,9 @@ Written down so they stop being tempting:
 
 - A vector database / RAG memory. A Markdown file of facts is enough for one
   person. Revisit only when it demonstrably fails.
-- A web dashboard. Telegram is the UI.
+- A web dashboard. Voice and the terminal are the UI.
+- **Telegram.** Dropped 2026-09-08 — WhatsApp is the only messaging channel,
+  and only later. Do not re-add it "because it is easier".
 - A local LLM. The hardware forbids it. Settled.
 - Our own task queue, scheduler, or channel gateway. Hermes has these. Writing
   them again is the exact tangle this project is organised to avoid.

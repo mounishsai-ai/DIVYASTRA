@@ -195,11 +195,19 @@ later; it is the right tool for that one job.
 
 ---
 
-## D6. Phone channel → **Telegram bot** (primary) + **Twilio** (real calls)
+## D6. ~~Telegram~~ → **local first**, WhatsApp later, Twilio for real calls
 
-**Telegram is the daily driver.** Free, voice notes both directions, no ToS
-problem, and it is a built-in Hermes gateway. Highest value-per-hour component
-in the project.
+> **REVISED 2026-09-08.** Telegram is dropped entirely at Mounish's decision.
+> The order is now **local first, remote later**: get her working at the laptop
+> (voice, hotkey), and add phone access afterwards — as **WhatsApp**, not
+> Telegram, because that is what he actually uses.
+
+Consequence: the "task from class" feature moves later in the plan. That is the
+right trade — an assistant you can talk to at your desk is worth more than one
+you can message but that cannot do anything yet.
+
+Twilio's role is unchanged: **real ringing calls**, which no messaging channel
+can do.
 
 **Twilio is added for actual ringing calls** — decided by Mounish 2026-09-08.
 Also a built-in Hermes gateway, so it is config rather than code.

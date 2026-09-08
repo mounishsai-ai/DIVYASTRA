@@ -38,10 +38,46 @@ model:
 `.env` (in the Hermes directory, outside this repo):
 
 ```
-VERTEX_CREDENTIALS_PATH=C:\Users\mouni\AppData\Local\hermes\vertex-sa-key.json
-VERTEX_PROJECT_ID=placement-agent-22587
+VERTEX_CREDENTIALS_PATH=C:\Users\mouni\AppData\Local\hermes\divyastra-vertex-key.json
+VERTEX_PROJECT_ID=divyastra-agent-37057
 VERTEX_REGION=global
 ```
+
+### Dedicated GCP project (migrated 2026-09-08)
+
+DIVYASTRA got its **own** Google Cloud project at Mounish's instruction — no
+sharing with `placement-agent` or anything else.
+
+| | |
+|---|---|
+| Project | `divyastra-agent-37057` ("DIVYASTRA"), number `65127856755` |
+| Service account | `divyastra-vertex@divyastra-agent-37057.iam.gserviceaccount.com` |
+| Role | `roles/aiplatform.user` only |
+| Key | `%LOCALAPPDATA%\hermes\divyastra-vertex-key.json`, id `13adbcacd231a134c92f60e4dbecdc9b81622bd5` |
+
+**The billing quota fight.** The billing account allows only **3 projects**, and
+all 3 were taken. Mounish chose to free the slot from `placement-agent-22587`.
+**Billing was unlinked, not deleted** — that frees the quota, is reversible in
+one command, and destroys nothing:
+
+```
+gcloud billing projects link placement-agent-22587 --billing-account=01573C-ED4F11-44CBC4
+```
+
+(Relinking would need a slot free again.)
+
+**Cleanup done.** The key previously created on `jarvix-vertex` was **revoked**
+and its local file deleted; that service account has no user-managed keys again.
+The budget alert was repointed at the new project.
+
+> **To revoke DIVYASTRA's access:**
+> ```
+> gcloud iam service-accounts keys delete 13adbcacd231a134c92f60e4dbecdc9b81622bd5 --iam-account divyastra-vertex@divyastra-agent-37057.iam.gserviceaccount.com
+> ```
+
+**One gotcha:** a new IAM binding takes ~20–40 s to propagate. The first call
+after granting a role returns `403 aiplatform.endpoints.predict denied`. That is
+not a misconfiguration — wait and retry. Verified working immediately after.
 
 `mcp_servers.cua-driver` unchanged from Phase 0.
 
@@ -65,17 +101,9 @@ bare bearer token to a standard OpenAI client. Proven directly:
 - `gcloud auth application-default set-quota-project` does **not** fix it — the
   raw token doesn't carry the quota project
 
-Service accounts belong to the project, so they need no such header. We reused
-the **existing** `jarvix-vertex@…` account, which already had exactly
-`roles/aiplatform.user` — minimal and correct. Key is at
-`%LOCALAPPDATA%\hermes\vertex-sa-key.json`, permissions restricted to your
-account, and **outside this git repo**.
-
-> **To revoke later:**
-> ```
-> gcloud iam service-accounts keys delete 80cf619ba9e6c6c7144dabfa37388fa220074f74 --iam-account jarvix-vertex@placement-agent-22587.iam.gserviceaccount.com
-> ```
-> Then delete the JSON file.
+Service accounts belong to the project, so they need no such header. Key is
+stored outside this repo with permissions restricted to your Windows account —
+see the dedicated-project table above for the current identity.
 
 ---
 

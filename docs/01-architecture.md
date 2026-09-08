@@ -12,7 +12,7 @@ spaghetti.
              |
 +------------v------------------------------------------+
 |  1. CHANNELS            how a task arrives             |
-|     telegram · voice · hotkey · scheduler              |
+|     voice · hotkey · scheduler  (whatsapp: later)      |
 +------------+-------------------------------------------+
              |   every channel emits the SAME object:
              |   Task{ id, text, source, reply_to, urgency }
@@ -60,31 +60,35 @@ running.
 A channel's only job: turn something that happened into a `Task`, and know how
 to deliver the answer back.
 
-| Channel | Trigger | Reply goes to |
-|---|---|---|
-| `telegram` | message or voice note from my phone | Telegram, as text + voice note |
-| `voice` | wake word "Divyastra" heard | speakers, via TTS |
-| `hotkey` | a key combo on the laptop | a small on-screen panel |
-| `scheduler` | a time, or a watched event | whichever channel I set |
+| Channel | Trigger | Reply goes to | When |
+|---|---|---|---|
+| `voice` | wake word "Divyastra" heard | speakers, via TTS | **first** |
+| `hotkey` | a key combo on the laptop | a small on-screen panel | first |
+| `scheduler` | a time, or a watched event | whichever channel I set | soon |
+| `whatsapp` | message or voice note from my phone | WhatsApp, text + voice note | **later** |
 
-Because they all produce the same `Task`, adding a fifth channel later (email?
-SMS?) requires **zero** changes to the core.
+**Local first, remote later** (decided 2026-09-08). Get her working at the
+laptop; reaching her from the phone comes after. Telegram is dropped entirely —
+WhatsApp is the one messaging channel, and only later.
+
+Because every channel produces the same `Task`, adding WhatsApp later requires
+**zero** changes to anything else. That is the whole point of the layering.
 
 ### About "it calls me" — read this carefully
 
 What you described — *assign a task during class, it finishes and calls back* —
 is fully buildable, but the word **call** needs honesty:
 
-- Telegram bots **can** send **voice notes** and push notifications. Your phone
-  buzzes, you tap, you hear her voice. Free, works today. **This is what we
-  build.**
-- Telegram bots **cannot place a real phone call.** Only human accounts can.
-- A true ringing PSTN call needs Twilio (paid) and, in India, **DLT
-  registration** with a telecom operator. Real bureaucracy, real money.
+- **WhatsApp can carry voice notes both ways.** Your phone buzzes, you tap, you
+  hear her voice. That covers the experience you described.
+- **A messaging bot cannot make your phone ring.** That is a different thing.
+- A true ringing call needs **Twilio**, an international number (Indian numbers
+  cannot place these), and real money. Details in D6 of
+  [02-decisions.md](02-decisions.md).
 
-So: voice-note-in, voice-note-out, plus a push notification. Same experience in
-practice. We are not shipping a substitute under the word "call" without saying
-so.
+So there are two separate features: *voice notes* (easy, part of WhatsApp) and
+*a ringing call* (Twilio, paid, later). We are not shipping one under the name
+of the other.
 
 ---
 
@@ -117,26 +121,74 @@ Tier 3   hard multi-step desktop work Claude Sonnet     <- capped by budget
 awake all day, but the expensive parts only wake for Tier 2 and above. Idle
 DIVYASTRA costs nothing.
 
-> **Unverified assumption — check in Phase 1.** Tiering needs Hermes to support
-> **per-task or per-agent model overrides**, not just one global default model.
-> If it does, the tiers are config. If it does not, we need another way to
-> express "cheap by default, expensive only when hard" — find out before
-> anything depends on it.
->
-> Note the floor is safe regardless: wake word, STT and TTS are all local, so
-> **idle genuinely costs zero** whatever the router can or cannot express.
+> **RESOLVED 2026-09-08.** Hermes *does* support per-task model overrides
+> (`delegation.model`, and `--model` per invocation), so tiering is config.
+> Note Hermes recommends the **inverse**: frontier parent, cheap children —
+> because children carry most of the tokens. Probably better than our version.
+> Not adopted yet; no usage data to justify a choice.
 
 **Agent loop** — the cycle from the glossary. It needs a step limit, a
-wall-clock limit, and a spend limit, so a confused model cannot loop forever on
-your credits. Non-negotiable — confirm Hermes exposes these, or add them.
+wall-clock limit, and a spend limit.
 
-**Memory** — three kinds, deliberately separated:
-- *Task memory* — scratch notes, dies with the task.
-- *Facts* — "my college portal is at X", "mom's number is Y".
-- *Episodes* — what it did last time and whether it worked.
+> **RESOLVED 2026-09-08 — two out of three.** Hermes has step caps
+> (`delegation.max_iterations`) and failure-loop caps
+> (`tool_loop_guardrails`), but **no spend cap at all**. That is enforced
+> outside Hermes, by a Google Cloud budget alert. See
+> [06-phase1-hermes.md](06-phase1-hermes.md).
 
-Hermes ships persistent memory, so use its facility rather than inventing one.
-Do not build a vector database. You will want to. Don't.
+**Memory — use Hermes's, do not build our own.**
+
+Hermes already ships exactly this, with deliberate hard caps:
+
+```yaml
+memory:
+  memory_enabled: true        # agent's own notes
+  user_profile_enabled: true  # preferences, style
+  memory_char_limit: 2200     # ~800 tokens
+  user_char_limit: 1375       # ~500 tokens
+```
+
+Both are injected into the system prompt every call. So Hermes made the same
+architectural choice we would have — a small flat block, always present, hard
+capped — and it is already built. **We write facts into it; we do not invent a
+facts file.**
+
+### Why a flat file beats RAG here (asked 2026-09-08)
+
+For **one person**, the flat block wins decisively:
+
+- The whole corpus is tiny. Hermes caps it at ~1,300 tokens; a student's facts
+  fit easily. RAG exists for corpora too big to fit — that is not this.
+- **Prompt caching** makes a *static* block cheap on repeat. A cached read bills
+  far below the normal input rate; the Calculator run read 929K cached tokens.
+  A block that never changes is the ideal cache candidate.
+- RAG costs an **extra embedding API call per query**, plus a vector store to
+  run, plus retrieval latency — and it still injects the retrieved text.
+- RAG can retrieve the **wrong** chunk. A flat block is deterministic.
+
+The crossover is when facts outgrow what you would pay to send every call —
+call it tens of KB. For one student, that day may never come. **Revisit only
+when Hermes's own caps start truncating things you needed.**
+
+### The trap: don't let build-time docs into runtime
+
+**Measured 2026-09-08:** Hermes injects `SOUL.md`, `AGENTS.md`, **`CLAUDE.md`**
+and `.cursorrules` from its working directory.
+
+| Hermes run from | System prompt |
+|---|---|
+| a neutral folder | 16,229 B |
+| this project folder | **25,237 B** (+7,467 B of CLAUDE.md) |
+
+**That is a 55% larger prompt on every single call, for documentation that
+exists to guide Claude Code while building — not to guide DIVYASTRA at run
+time.** Keep the two straight:
+
+- **`CLAUDE.md` + `docs/` = build time.** For Claude Code. Never for Hermes.
+- **`SOUL.md` + Hermes memory = run time.** For DIVYASTRA. Where FRIDAY lives.
+
+**Rule: do not run Hermes with its working directory set to this repo.** Give
+it the folder the task is actually about.
 
 ---
 

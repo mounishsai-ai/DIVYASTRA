@@ -89,13 +89,13 @@ to make that structurally impossible. Do not break them for convenience.
 | Desktop control | **cua-driver** 0.24.0 — installed & verified | free |
 | Browser control | **cua-driver `browser_*` tools** (CDP) | free |
 | Mail | **Gmail MCP server** + Google OAuth | free |
-| Everyday brain | **Gemini 3.8 Flash on Vertex AI** (GCP credits) | ~$0.29/task — see 1b |
+| Everyday brain | **Gemini 3.8 Flash on Vertex** (own GCP project) | ~$0.29/task — see 1b |
 | Hard-task brain | **Claude Sonnet via Agent SDK** | $20/mo credit incl. in Pro |
 | Voice out (FRIDAY) | **Kokoro-82M** TTS, local CPU | free |
 | Voice in | **whisper.cpp** local CPU | free |
 | Wake word | **openWakeWord** | free (non-commercial models) |
-| Phone channel | **Telegram** (daily) + **Twilio** (real calls) | free / ~$2/mo |
-| WhatsApp | **skipped** — ToS/ban risk, not worth it | — |
+| Phone channel | **WhatsApp** (later) + **Twilio** (real calls) | free / ~$2/mo |
+| Telegram | **dropped** — WhatsApp is the only messaging channel | — |
 | Custom limbs | our own MCP servers | free |
 
 **Hardware reality:** Intel UHD integrated graphics, 15.7 GB RAM, no NVIDIA
