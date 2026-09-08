@@ -232,6 +232,38 @@ anything irreversible**.
 
 ---
 
+## Phase 2 RESULT — she is a working voice assistant
+
+Verified end to end 2026-09-08, one continuous loop:
+
+```
+"hey jarvis"        -> wake fires (score 0.35), local, free
+"Yes?"              -> her acknowledgement, local, instant
+"What you can do?"  -> transcribed locally in ~1s
+                    -> Hermes thinks, 9.8s, about a cent
+                    -> she answers aloud in her own voice
+```
+
+`divyastra/voice/assistant.py` is the loop. Every other voice file stays
+ignorant of the rest: `wake.py` does not know what follows a wake, `stt.py` does
+not know who reads the text, `tts.py` does not know who wrote it.
+
+**The cost shape that makes this viable:**
+
+| State | Tokens | Money | CPU |
+|---|---|---|---|
+| waiting for the wake word | 0 | 0 | ~7% of one core |
+| woken, but you said nothing | 0 | 0 | brief |
+| you actually asked something | one Hermes run | ~$0.01 to talk | - |
+
+Nothing expensive happens until there are real words to act on.
+
+**One design note:** a chime was tried first as the "I'm listening" cue. It was
+too subtle to act on - the first live test woke correctly and then nobody spoke.
+A spoken "Yes?" costs ~0.5s more and is unmistakable.
+
+---
+
 ## Phase 3 — Twilio: it actually calls you
 
 **Read the India rules in [02-decisions.md](02-decisions.md) D6 first.** Short
