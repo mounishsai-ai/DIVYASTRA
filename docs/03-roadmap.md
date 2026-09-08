@@ -155,6 +155,22 @@ should not involve a language model re-deriving how to click a login button.
 
 ---
 
+## Phase 1c — Browser profile enforcement (before any real browser use)
+
+**Open flaw** (see [05-phase0-findings.md](05-phase0-findings.md)): the browser
+limb binds to whatever Chrome is running, so the deliberate choice of
+`Profile 8` is documented but unenforced. On a laptop with nine profiles, most
+belonging to other people, that is a privacy bug, not a nicety.
+
+- [ ] Launch Chrome with `--profile-directory=Profile 8` and track that pid.
+- [ ] Verify the attached profile after `browser_prepare`; refuse on mismatch.
+- [ ] Fail closed — never fall back to an arbitrary browser.
+
+Also note: Chrome's **"Allow remote debugging?"** dialog needs a human click and
+no agent can click it. Unattended browser work requires consent pre-granted.
+
+---
+
 ## Phase 2 — Her voice (FRIDAY)
 
 Hermes has a voice mode, but the *personality and voice* are ours — this is the

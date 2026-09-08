@@ -324,3 +324,60 @@ browser limb quietly degrades again.
 `cua-driver autostart status` reported `registered (not running)` mid-session.
 When the daemon is down, every tool call fails and an agent will burn turns
 discovering that. **Check `autostart status` before trusting a bad measurement.**
+
+
+---
+
+## OPEN DESIGN FLAW: the browser limb does not enforce a profile
+
+**Raised by Mounish 2026-09-08:** *"it's not using the right profile... it just
+uses whatever is opened, or whichever Chrome opens."*
+
+**He is right, and this contradicts a decision we made deliberately.** D-browser
+picked **`Profile 8` ("Mounish Sai")** specifically so the agent could not reach
+other people's logged-in sessions — this laptop has **nine** Chrome profiles,
+most belonging to friends and family.
+
+**But nothing enforces it.** Every browser call so far binds by *pid*:
+
+```
+list_windows -> whatever Chrome is running -> browser_prepare(pid, window_id)
+```
+
+If Chrome is restarted under a different profile, or a second Chrome/Brave
+window exists, the agent attaches to **whatever it finds**. The privacy choice
+is documented and unimplemented.
+
+**Required fix before the browser limb is used for anything real:**
+
+1. **Launch our own Chrome** with `--profile-directory=Profile 8` and remember
+   *that* pid — never adopt an arbitrary running browser.
+2. **Verify before acting.** After `browser_prepare`, confirm the attached
+   endpoint's user-data-dir/profile matches the expected one, and refuse if not.
+3. **Fail closed.** No profile match, no browser actions — do not silently fall
+   back to whatever is available.
+
+Until that exists, treat the browser limb as **unsafe for unattended use**.
+
+## Another failure mode: `completed: true` does not mean the task worked
+
+A run reported `completed: true, failed: false`, **7 calls, $0.05, 54 s** — which
+reads as a huge win. What actually happened:
+
+> `browser_prepare` returned `refused (browser_binding_stale)` because window
+> `2754554` was not owned by PID 2556 ... Chrome process 2556 was no longer
+> running.
+
+The agent explained the problem clearly and stopped. **The loop terminated
+normally, so Hermes recorded success.** The task was not done.
+
+**Three distinct ways a run can look cheap while being worthless, all hit today:**
+
+| Symptom | Example |
+|---|---|
+| wrong answer | keyboard runs returned `Display is 0`, then `89` |
+| hard failure | rate-limit run: 10 calls, $0, `failed: true` |
+| **clean give-up** | this one: 7 calls, `completed: true`, no answer |
+
+**Rule: a measurement counts only if the run produced the correct result.**
+Check the *answer*, not the status flag.
