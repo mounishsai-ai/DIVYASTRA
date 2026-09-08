@@ -135,7 +135,12 @@ should not involve a language model re-deriving how to click a login button.
    for roughly $0.30–0.70 per novel desktop task and do not build habits that
    run it in a loop.
 4. Revisit per-turn tuning **only** with 5+ runs per condition, given the 2.4x
-   variance.
+   variance — **and only counting runs that produced the correct result.** A
+   failed run is shorter and cheaper; comparing it to a successful one produced
+   a bogus "3-5x win" once already (see the keyboard retraction in
+   [06-phase1-hermes.md](06-phase1-hermes.md)).
+5. **Assume the agentic path costs $0.30–0.50 per novel desktop task.** Nothing
+   tried has beaten the plain accessibility-tree clicking baseline.
 
 **Acceptance**
 - [ ] One repeated task runs with **no model calls at all**.

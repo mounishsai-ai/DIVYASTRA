@@ -388,36 +388,55 @@ Add the model re-reading state and you get the 30-39 observed. **It is the
 architecture, not a bug** — that invariant is what stops it clicking stale
 coordinates.
 
-#### The fix: keyboard input needs no snapshot
+#### The keyboard idea — RETRACTED
 
-`press_key` and `hotkey` take only a `pid`. **No snapshot, no element index, no
-second round trip.** Measured on the same Calculator task:
+`press_key` and `hotkey` take only a `pid`, so they need no snapshot and no
+second round trip. That reasoning is correct. The conclusion drawn from it was
+not.
 
-| Approach | API calls | Cost |
-|---|---|---|
-| click via accessibility tree | 30–39 | $0.29–0.47 |
-| **keyboard (`press_key`)** | **9–11** | **$0.054–0.095** |
+First measurements looked like a 3-5x win:
 
-**A 3-5x reduction, and the call count is far outside the 2.4x noise band.**
-Call count is also a much better metric than cost — it varies less.
+| Run | Calls | Cost | Result |
+|---|---|---|---|
+| keyboard, background delivery | 11 | $0.095 | **FAILED** — `Display is 0` |
+| keyboard, foreground | 9 | $0.054 | **WRONG** — `89`, not 72 |
 
-Two caveats found the hard way:
-- **UWP apps ignore background key events.** The first keyboard run returned
-  `Display is 0`; Windows 11 Calculator drops background `PostMessage` keys.
-  It needs `delivery_mode: "foreground"`. Acceptable here — Mounish confirmed
-  the agent may take over the screen.
-- **Keys are literal.** `*` sent as a plain key produced `89` instead of `72` —
-  it needs shift+8. A cheap wrong answer is not a win.
+Both were reported as a win. **Both had failed.** The run that actually produced
+the right answer:
 
-#### The rule this gives us
+| Run | Calls | Cost | Result |
+|---|---|---|---|
+| keyboard, foreground, correct multiply key | **149** | **$1.65** | 72 |
+| **clicking via accessibility tree** | **30–39** | **$0.29–0.47** | 72 |
 
-> **Prefer keyboard over clicking whenever the app allows it.** Every click
-> costs a snapshot round trip; every keystroke does not. Reach for the
-> accessibility tree to *find* things and to *verify* the result — not to drive
-> every individual action.
+**The keyboard path is 4-5x WORSE than clicking**, once it has to be correct.
+Sending `*` reliably to Windows Calculator is fiddly, and the agent retried its
+way to 149 calls getting there.
 
-This belongs in `SOUL.md` as standing guidance, so it applies to every task
-rather than being re-discovered per prompt.
+**The error was comparing runs without checking they succeeded.** A cheap wrong
+answer is not a data point — it is a shorter run. This document had already
+written down "a cheap wrong answer is not a win" one paragraph earlier, and the
+comparison was made anyway.
+
+#### Where that leaves Phase 1b
+
+**No cost improvement has been found.** Honest state after ~$4 of experiments:
+
+- Tool-schema trimming: no effect (Hermes already budgets schemas).
+- Not running in the repo directory: no measurable effect.
+- Aggressive compaction: worse.
+- Keyboard instead of clicking: **much** worse when correct.
+- **Clicking via the accessibility tree is the cheapest approach that reliably
+  works.** It was the baseline all along.
+
+**So $0.30–0.50 per novel desktop task is simply the price**, and the way to
+spend less is to run fewer agentic tasks — not to make each one cheaper. That
+is what the frequency split in [03-roadmap.md](03-roadmap.md) says: daily
+repeated work belongs in deterministic code, where the model cost is zero.
+
+**Standing rule for any future tuning:** a run that did not produce the correct
+result is not a measurement. Record success/failure beside every cost figure,
+and never compare across that line.
 
 ---
 
