@@ -33,3 +33,8 @@ divyastra/voice/samples/
 divyastra/voice/training/data/
 divyastra/voice/training/output/
 divyastra/voice/training/.venv/
+
+# API credentials - never commit
+kaggle.json
+*.pem
+*.p12
