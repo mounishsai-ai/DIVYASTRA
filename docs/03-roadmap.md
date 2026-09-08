@@ -180,7 +180,24 @@ part that makes it DIVYASTRA and not a generic agent.
 1. Kokoro-82M locally. Audition voices, pick the FRIDAY one.
 2. `voice/tts.py` exposing exactly `speak(text)`.
 3. whisper.cpp on CPU. `voice/stt.py` exposing `listen() -> str`.
-4. openWakeWord on "Divyastra".
+4. ~~openWakeWord on "Divyastra"~~ - **currently `hey_jarvis`.**
+
+   openWakeWord ships only `alexa`, `hey_jarvis`, `hey_mycroft` and
+   `hey_rhasspy` pretrained. **"Divyastra" does not exist as a model.** Two ways
+   to get it, neither done:
+
+   | Option | Cost | Effort |
+   |---|---|---|
+   | Train a custom openWakeWord model | free | synthetic data + training, hours, wants a GPU (Colab) |
+   | Picovoice Porcupine custom keyword | free tier, personal use | minutes in their web console |
+
+   `hey_jarvis` is thematically fine and works today, so this is not blocking.
+   Swapping later is one line - `WAKE_WORD` in `wake.py`.
+
+   **Threshold matters more than the word.** Measured on Mounish's natural
+   speaking voice: 0.49 / 0.29 / 0.42 - the default 0.5 caught **none**. Set to
+   0.25, which caught 4/4. A false wake costs nothing (she listens, hears no
+   speech, sleeps again), so bias generous.
 5. ~~`voice/personality.md`~~ **done** - versioned here, deployed to
    `%LOCALAPPDATA%\hermes\SOUL.md` (original backed up as
    `SOUL.md.hermes-original`).
@@ -205,7 +222,13 @@ anything irreversible**.
       stop talking is ~2.2 s (1.2 s silence detection + ~1 s transcription).
       Transcription itself runs **faster than real time**: 1.37 s for 3.2 s of
       audio.
-- [ ] Wake word runs one hour with **zero** false triggers, near-zero CPU.
+- [x] **Wake word works** - `hey_jarvis`, detected 4/4 at natural speaking
+      volume. **Idle cost measured: 7.1% of one core**, no network, no money.
+- [x] **Pauses while the laptop is locked.** A logon-started process keeps
+      running when you lock the screen; without this it would listen to the mic
+      on the lock screen. It checks `OpenInputDesktop` and stops scoring audio.
+- [ ] One hour with zero false triggers - not yet run at the new threshold.
+- [ ] **The wake word is "hey jarvis", not "Divyastra"** - see below.
 
 ---
 
