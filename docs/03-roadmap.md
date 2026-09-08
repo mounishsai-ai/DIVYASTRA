@@ -205,6 +205,10 @@ Much of this is Hermes cron; the work is deciding *policy*, not building it.
 **Acceptance**
 - [ ] *"Every day at 8 pm, check the portal for new assignments and tell me."*
 - [ ] Idle for 24 h costs **zero** tokens. Verify in the provider console.
+- [ ] **No scheduled task invokes the agent loop.** A cron job that fires every
+      morning is by definition the daily-identical row from Phase 1b — it should
+      be a deterministic limb, not an LLM re-deriving the same clicks at
+      $0.30–0.70 a time. Treat "cron calls the agent" as a design error.
 - [ ] **The billing-disabled week.** Turn off GCP billing and use her normally
       for a week on the free Flash tier alone. If she still works, DIVYASTRA
       survives the day the $300 expires. If not, fix it now — far cheaper to

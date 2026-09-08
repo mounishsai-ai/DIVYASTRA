@@ -337,9 +337,10 @@ is **fewer turns** — and for a personal assistant, most tasks repeat.
 2. **Hermes `skills`** — a written procedure so the agent does not re-explore.
    Reduces turns; does not eliminate them.
 3. **Deterministic limbs — the real answer for daily tasks.** Code, no model.
-   The 2026 paper reporting 93%+ savings on repeated tasks is describing exactly
-   this: compiling a proven trace into a branch-free recipe. For us that recipe
-   is a small MCP server, which is what `capabilities/` was always for.
+   Similar in spirit to published work on compiling proven agent traces into
+   fixed recipes, though that was only seen second-hand in a search summary and
+   its mechanism is not verified here. For us the recipe is simply a small MCP
+   server — which is what `capabilities/` was always for.
 
 **The principle:** the agent loop is for figuring something out *the first time*.
 Once it works, it should become a recipe. Paying an LLM to re-derive "click 8,
