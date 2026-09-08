@@ -1,0 +1,62 @@
+# Train "hey divya" as DIVYASTRA's wake word.
+#
+# Run with:
+#   divyastra\voice\training\.venv\Scripts\livekit-wakeword.exe run divyastra\voice\training\hey_divya.yaml
+# (set PYTHONIOENCODING=utf-8 first - the CLI prints arrows that cp1252 cannot
+#  encode and crashes on its own help text otherwise)
+#
+# Output is an ONNX model that is drop-in compatible with openWakeWord, so it
+# slots straight into voice/wake.py - change WAKE_WORD and point it at the file.
+#
+# FULL RUN - the overnight one. Launch and leave it.
+#
+# The calibration run (1,500 samples / 6,000 steps) finished in ~95 min and
+# produced a model that WORKS but is not good enough:
+#     threshold 0.50 -> recall 78.3%, 16.4 false wakes/hour
+#     threshold 0.31 -> recall 92.7%, 56.0 false wakes/hour
+# Undertrained, not broken. These are the library defaults, ~7x the data and
+# ~8x the steps, so budget roughly 8-10 hours.
+#
+# ORIGINAL NOTE (calibration): This laptop has no
+# GPU, and the defaults (10,000 samples / 50,000 steps) could run for many hours
+# on an Intel UHD. Measure a short run first, then scale up.
+# Defaults for reference: n_samples 10000, n_samples_val 2000, steps 50000.
+
+model_name: hey_divya_full
+
+# Must be stated explicitly: `setup` only downloads the Piper VITS weights when
+# it can see tts_backend in the config. Leaving it to the default meant setup
+# silently skipped them and `generate` then failed with a missing model.
+tts_backend: piper_vits
+
+# Two spellings so the synthetic voices cover both pronunciations.
+target_phrases:
+  - "hey divya"
+  - "hey deevya"
+
+# Confusable phrases, so she does not wake on things that merely sound close.
+# This is the main defence against false positives - worth expanding if she
+# fires at the wrong moment in real use.
+custom_negative_phrases:
+  - "hey deeya"
+  - "hey diya"
+  - "hey dia"
+  - "hey diana"
+  - "divya"
+  - "video"
+  - "hey there"
+  - "hey siri"
+  - "hey google"
+  - "okay"
+
+# --- calibration sizes (scale up once timings are known) ---
+n_samples: 10000
+n_samples_val: 2000
+n_background_samples: 200
+n_background_samples_val: 40
+
+steps: 50000
+learning_rate: 0.0001
+
+data_dir: ./divyastra/voice/training/data
+output_dir: ./divyastra/voice/training/output

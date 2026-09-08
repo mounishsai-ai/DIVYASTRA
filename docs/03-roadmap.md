@@ -229,6 +229,44 @@ part that makes it DIVYASTRA and not a generic agent.
 
    Downloads are ~915 MB with `--skip-acav` (which avoids a 16 GB set).
 
+   **CALIBRATION RUN COMPLETE 2026-09-08 - pipeline works, model does not.**
+
+   The whole LiveKit pipeline ran end to end locally in **~95 minutes** and
+   produced `hey_divya.onnx`. But the metrics say do not ship it:
+
+   | Threshold | Recall | False wakes/hour |
+   |---|---|---|
+   | 0.50 (default) | 78.3% | **16.4** |
+   | 0.31 ("optimal") | 92.7% | **56.0** |
+
+   Validated against 300 positives and 30,384 negatives over 16.9 hours of
+   audio. **A false wake every ~4 minutes is unusable**, and no threshold fixes
+   it - both ends of the curve are bad, which means the model is not
+   discriminating, not merely mis-tuned.
+
+   **Undertrained, not broken.** We ran 6,000 steps on 1,500 samples; the
+   library defaults are 50,000 on 10,000. That is ~8x the steps and ~7x the
+   data.
+
+   **`hey_divya_full.yaml` is staged** with the defaults. Extrapolating from the
+   95-minute calibration: **budget 8-10 hours.** Launch it before bed:
+
+   ```
+   set PYTHONIOENCODING=utf-8
+   divyastra\voice\training\.venv\Scripts\livekit-wakeword.exe run divyastra\voice\training\hey_divya_full.yaml
+   ```
+
+   (`C:\Program Files\eSpeak NG` must be on PATH.)
+
+   **Nothing is blocked meanwhile** - `hey_jarvis` works today at 4/4 detection.
+
+   **You never record your voice.** Training is 100% synthetic: you type the
+   phrase and Piper VITS generates thousands of variations across voices, speeds
+   and accents, then reverb and background noise are mixed in. Our run generated
+   **7,200 clips** without touching the microphone. The negatives matter as much
+   as the positives - those are the confusables ("hey diya", "hey diana",
+   "video") that teach it what is *not* her name.
+
    **A design warning about the word itself.** Short wake words false-fire more,
    because there is less sound to match. Every pretrained model is 3+ syllables
    (`hey jarvis`, `hey mycroft`, `alexa`). **"Divya" is 2 syllables and will
