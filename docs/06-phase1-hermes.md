@@ -350,6 +350,77 @@ tool schemas.
 That reframes Phase 1b entirely, and it is now the plan in
 [03-roadmap.md](03-roadmap.md).
 
+### Attempt 2 — WHY so many calls (and a 3-5x win)
+
+Asked directly: *why does a 4-click task need 30+ API calls?* Two answers, both
+found in evidence rather than theory.
+
+#### 1. Why the tool-schema experiment failed — Hermes already solved it
+
+From `logs/agent.log` during a real run:
+
+```
+tool_search activated (tier 1): 17 core/visible tools kept,
+4 deferred (~2896 tokens), listing full (budget ~4000 tokens)
+```
+
+Hermes has **progressive tool disclosure**: MCP tools are replaced in the
+model-visible array by three bridge tools (`tool_search`, `tool_describe`,
+`tool_call`), and the visible listing is fitted to a **~4000-token budget**.
+
+So the 157 KB of cua-driver schema was **never being sent**. Trimming 57 tools
+to 18 was cutting something already cut. **Mystery solved** — and the lesson is
+to read the runtime log before optimising a number you assumed.
+
+#### 2. The real driver — the snapshot-before-action invariant
+
+The driver requires a **fresh `get_window_state` before every element-indexed
+action**, because element indices are invalidated by the next snapshot. So a
+click is not one round trip, it is two:
+
+```
+model -> get_window_state   (API call 1)
+model -> click(element)     (API call 2)
+```
+
+Four clicks = **eight** API calls before launch, verification, or any retry.
+Add the model re-reading state and you get the 30-39 observed. **It is the
+architecture, not a bug** — that invariant is what stops it clicking stale
+coordinates.
+
+#### The fix: keyboard input needs no snapshot
+
+`press_key` and `hotkey` take only a `pid`. **No snapshot, no element index, no
+second round trip.** Measured on the same Calculator task:
+
+| Approach | API calls | Cost |
+|---|---|---|
+| click via accessibility tree | 30–39 | $0.29–0.47 |
+| **keyboard (`press_key`)** | **9–11** | **$0.054–0.095** |
+
+**A 3-5x reduction, and the call count is far outside the 2.4x noise band.**
+Call count is also a much better metric than cost — it varies less.
+
+Two caveats found the hard way:
+- **UWP apps ignore background key events.** The first keyboard run returned
+  `Display is 0`; Windows 11 Calculator drops background `PostMessage` keys.
+  It needs `delivery_mode: "foreground"`. Acceptable here — Mounish confirmed
+  the agent may take over the screen.
+- **Keys are literal.** `*` sent as a plain key produced `89` instead of `72` —
+  it needs shift+8. A cheap wrong answer is not a win.
+
+#### The rule this gives us
+
+> **Prefer keyboard over clicking whenever the app allows it.** Every click
+> costs a snapshot round trip; every keystroke does not. Reach for the
+> accessibility tree to *find* things and to *verify* the result — not to drive
+> every individual action.
+
+This belongs in `SOUL.md` as standing guidance, so it applies to every task
+rather than being re-discovered per prompt.
+
+---
+
 ### Budget guard added
 
 Both pre-existing budgets use `INCLUDE_ALL_CREDITS` — they track spend *after*
