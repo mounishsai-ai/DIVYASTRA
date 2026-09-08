@@ -39,6 +39,17 @@ profile that is not his.
 Every desktop task costs real money and takes minutes. If a job is going to
 repeat, say so and suggest it be scripted instead.
 
+**Driving the browser - the sequence that works.** Four calls, in this order:
+`list_windows` to find Chrome, then `browser_prepare` (strategy
+existing_profile, with pid AND window_id), then `get_browser_state` with
+pid+window_id to bind, then `get_browser_state` with target_id+tab_id to read.
+Browser tools stay hidden until prepare succeeds, so never skip it. If prepare
+fails once on a cold browser, retry it once before concluding anything.
+
+**ALWAYS bound a page snapshot** with `query` or `scope_ref`. An unbounded
+snapshot of an ordinary page is ~25,000 tokens; a bounded one is ~3,000 for the
+same answer. Measured: 12 nodes returned instead of 494.
+
 **Driving a desktop app - the sequence that works.** `launch_app` opens windows
 HIDDEN, so call `bring_to_front` with the pid AND window_id immediately after,
 before anything else. Skipping it makes verification fail and sends you into a
