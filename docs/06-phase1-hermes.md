@@ -489,6 +489,65 @@ ordering reverses.
 worth real money compared to driving the page. Gmail has an API; the browser limb
 should not be how DIVYASTRA reads mail.
 
+#### Attempt: a stronger model (Gemini 3.1 Pro)
+
+Hypothesis: Flash is too weak and thrashes; a Pro model with thinking would use
+fewer turns, trading per-token cost for fewer round trips.
+
+Note `gemini-3-pro` is **not available** on this project in any region (404 on
+generation). `gemini-3.1-pro-preview` works. Same Calculator task, idle machine:
+
+| Model | Calls | Cost | Wall time |
+|---|---|---|---|
+| `gemini-3.8-flash` | 21–39 | $0.19–0.47 | 147–248 s |
+| **`gemini-3.1-pro-preview`** | **32** | **$0.63** | **258 s** |
+
+**Same call count, ~2x the cost, no faster.** The hypothesis fails, and the
+failure is informative: **turn count is set by the snapshot-act-snapshot
+protocol, not by model intelligence.** A smarter model does not need fewer
+round trips when the protocol mandates one per action.
+
+Reverted to Flash.
+
+#### Attempt: hand it the exact procedure
+
+If model IQ is not the variable, maybe *procedural knowledge* is — the reason
+Opus 5 did a browser lookup in ~6 calls was that it knew the tool sequence.
+Tested by writing the known-good sequence into the prompt (launch, one snapshot,
+click four tokens, one final snapshot, no verification between steps):
+
+| Prompt | Calls | Cost | Wall time |
+|---|---|---|---|
+| plain ask | 21–39 | $0.19–0.47 | 147–248 s |
+| **explicit step-by-step procedure** | **52** | **$0.467** | **473 s** |
+
+**Worse on every axis.** The longer prompt costs tokens on every call, and the
+model did not follow it literally anyway — it kept its own verification habits.
+Prescribing a procedure in the prompt is not the same as executing one.
+
+#### Where the time actually goes
+
+Mounish watched a run and reported the breakdown, which no log showed:
+
+> "it opens calculator instantly, but to press the first number took ~40
+> seconds, and after that every 5 seconds it performs a click"
+
+That is the real latency profile:
+
+| Phase | Time | What it is |
+|---|---|---|
+| launch | instant | a local call, no model |
+| **first action** | **~40 s** | model reads the first full snapshot (39 elements + a screenshot) and decides |
+| **each later action** | **~5 s** | one model round trip |
+
+**~5 seconds per UI action is the floor**, and it is network + inference
+latency, not anything we configured. A ten-action task cannot finish in under a
+minute no matter what. The 40-second opening is the large first snapshot being
+read.
+
+**This is the answer to "at least make it fast".** It cannot be fast. Not with
+this shape — a cloud model deciding every individual click.
+
 #### Where that leaves Phase 1b
 
 **No cost improvement has been found.** Honest state after ~$4 of experiments:
