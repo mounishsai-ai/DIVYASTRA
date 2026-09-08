@@ -1,6 +1,6 @@
 # Start here
 
-Last updated 2026-09-08. If you have been away, read this and nothing else.
+Last updated 2026-09-09. If you have been away, read this and nothing else.
 
 ---
 
@@ -31,22 +31,46 @@ it is a five-minute job.
 
 ---
 
-## Waiting on: the wake word (training on Kaggle GPU)
+## The wake word: trained, built in, but NOT switched on yet
 
-A run is in flight. To collect it whenever you come back:
+The Kaggle run finished. `hey_divya.onnx` is trained, committed, and wired into
+`voice/wake.py` -- but **`hey_jarvis` is still the wake word**, on purpose.
+
+**One command settles it, and it needs your voice:**
 
 ```
-divyastra\voice\training\.venv\Scripts\kaggle.exe kernels status mounishsai7/hey-divya-wakeword
-divyastra\voice\training\.venv\Scripts\kaggle.exe kernels output mounishsai7/hey-divya-wakeword -p divyastra\voice\training\output\kaggle
+divyastra\voice\.venv\Scripts\python.exe divyastra\voice\wake.py --compare
 ```
 
-**The number that matters is false-wakes-per-hour.** The local calibration run
-managed 16.4/h at 78% recall, which is unusable. Under ~1/h and it is worth
-swapping in - one line in `voice/wake.py` plus the model path.
+It scores both models live, side by side. Say "hey jarvis" a few times, then
+"hey divya" a few times, at your **normal speaking volume** -- then stay quiet a
+minute so we can see what silence scores. Ctrl+C prints the peaks.
 
-If it is still bad, `hey_jarvis` keeps working and nothing is blocked.
+Then we pick a threshold below your quietest "hey divya" and above whatever
+ordinary talking reached, put it in `THRESHOLDS`, and change one line.
 
-**Expire the Kaggle token** once the model is downloaded.
+**Why I did not just switch it over.** The training report looks excellent --
+89% recall at 0.17 false wakes an hour. In its own test set it is excellent: of
+232 negative clips, *zero* scored above 0.5. But two things are true that the
+report does not show:
+
+- That 0.17/hour is measured one clip at a time, at the one perfect alignment.
+  A real listener scores every 80 ms and gets far more chances to fire, so the
+  real number will be worse.
+- The model is **very sensitive to alignment**. "Can you open the calculator"
+  scores 0.006 at the clean alignment and **0.879** when I slide it past every
+  offset. Same audio. Against phrases like "hey diana" it stops discriminating
+  altogether.
+
+All of that was measured on synthetic speech, which is no more like your voice
+than the synthetic speech it trained on. So it is a reason to test, not a reason
+to reject. **Your voice is the only test that counts.**
+
+If it does not work out, `hey_jarvis` keeps working and nothing is blocked. The
+detector, the threshold table and the compare tool all stay useful either way.
+
+**Expire the Kaggle token** -- the model is downloaded and committed, so it has
+done its job.
 
 ---
 
@@ -110,9 +134,9 @@ Chrome is running*, so the deliberate choice of `Profile 8` is documented but
 unenforced. This laptop has nine Chrome profiles, most belonging to other
 people. **Fix before any unattended browser use.**
 
-**The wake word is "hey jarvis", not "Divyastra".** openWakeWord ships no such
-model. Two ways to get one (custom training, or Picovoice), both in
-[docs/03-roadmap.md](docs/03-roadmap.md). Swapping is one line.
+**The wake word is still "hey jarvis".** A trained "hey divya" model now
+exists and is wired in -- it just needs one minute of your voice to choose a
+threshold. See the section above.
 
 ---
 
