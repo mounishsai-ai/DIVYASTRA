@@ -166,6 +166,54 @@ around 2026-12-06. Switching back is two lines: `provider: "gemini"` and a bare
 model name. Keep that reversibility — do not let anything depend on Vertex
 specifically.
 
+### Could we use Claude instead of Gemini? (asked 2026-09-08)
+
+Two different questions hide in this, and they have opposite answers.
+
+**1. Should we use Anthropic's Computer Use tool? No.**
+Claude's Computer Use is a **screenshot + mouse/keyboard** surface — it looks at
+pixels and moves a pointer. `cua-driver` reads the **Windows accessibility
+tree** and clicks elements *by name*. Ours is strictly better here: no image
+tokens, no coordinate drift, and it survives the window moving. Adopting
+screenshot-driving would be a downgrade, and it is the same pixel approach
+rejected in D1.
+
+**2. Should we use a Claude model as the brain, still driving `cua-driver`? Maybe — worth measuring.**
+That is a **model swap, not a tool swap**: one line of Hermes config, everything
+else unchanged.
+
+**Verified on our project 2026-09-08 — Claude is served on Vertex AI:**
+
+```
+publishers/anthropic/models/claude-sonnet-5   -> HTTP 200
+publishers/anthropic/models/claude-haiku-4-5  -> HTTP 200
+publishers/anthropic/models/claude-opus-5     -> HTTP 200
+```
+
+**This matters a lot:** it bills to the **same $290 GCP credit**, not out of
+pocket. (The $20/month Claude Agent SDK credit does **not** apply — that covers
+the Agent SDK and `claude -p`; Hermes calls the API directly.)
+
+Cost per 1M tokens, against `gemini-3.8-flash` at **$0.75 / $3.75**:
+
+| Model | Input | Output | vs Flash |
+|---|---|---|---|
+| `claude-haiku-4-5` | $1.00 | $5.00 | **1.3x** |
+| `claude-sonnet-5` | $2.00 | $10.00 | 2.7x |
+| `claude-opus-5` | $5.00 | $25.00 | 6.7x |
+
+**The bet:** a stronger model may need proportionally *fewer turns*, and turns
+are what cost money (77% of spend is the re-sent conversation). Haiku 4.5 only
+needs to be ~25% more turn-efficient to break even; Sonnet 5 needs ~60% fewer
+turns.
+
+**Do not decide this on one run.** The same task varies **2.4x** run to run —
+any comparison needs 5+ runs per model, judged on **API call count** (much less
+noisy than cost). Until then, Gemini Flash stays the default: it works, and it
+is the cheapest per token.
+
+---
+
 **Rejected:** a local LLM. With Intel UHD and 15.7 GB RAM, any model good
 enough for reliable tool-calling would be unusably slow. Settled — do not
 revisit without different hardware.
