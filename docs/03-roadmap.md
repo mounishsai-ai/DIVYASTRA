@@ -205,6 +205,30 @@ part that makes it DIVYASTRA and not a generic agent.
    synthetic-speech generator this training needs. That removes the data
    -generation step most people struggle with.
 
+   **Measured on this laptop 2026-09-08** (not estimated):
+
+   | Step | Calibration (1,500 samples) | Default (10,000) |
+   |---|---|---|
+   | synthetic speech generation | ~1.2 clips/sec -> ~20 min per split | **4-7 hours** |
+   | augment + train (6k vs 50k steps) | unmeasured, running | much longer |
+
+   So on a CPU this is an **overnight job at default sizes**, not an afternoon.
+   The calibration run exists to answer "is the model any good?" before
+   committing to that.
+
+   **Windows gotchas, both cost time:**
+   1. The CLI **crashes on its own `--help`** under cp1252 because it prints
+      arrows. Set `PYTHONIOENCODING=utf-8`.
+   2. `setup` only downloads the Piper VITS weights **if `tts_backend` is
+      written explicitly in the config**. Relying on the default meant it
+      silently skipped them and `generate` failed later with a missing model.
+   3. Needs the **`espeak-ng` binary**, and the error message only gives macOS
+      and Linux instructions. On Windows:
+      `winget install --id eSpeak-NG.eSpeak-NG`, then add
+      `C:\Program Files\eSpeak NG` to PATH.
+
+   Downloads are ~915 MB with `--skip-acav` (which avoids a 16 GB set).
+
    **A design warning about the word itself.** Short wake words false-fire more,
    because there is less sound to match. Every pretrained model is 3+ syllables
    (`hey jarvis`, `hey mycroft`, `alexa`). **"Divya" is 2 syllables and will

@@ -15,6 +15,11 @@
 
 model_name: hey_divya
 
+# Must be stated explicitly: `setup` only downloads the Piper VITS weights when
+# it can see tts_backend in the config. Leaving it to the default meant setup
+# silently skipped them and `generate` then failed with a missing model.
+tts_backend: piper_vits
+
 # Two spellings so the synthetic voices cover both pronunciations.
 target_phrases:
   - "hey divya"
