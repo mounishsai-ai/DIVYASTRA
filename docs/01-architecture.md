@@ -206,6 +206,48 @@ write config, not code.
 | ~~`playwright`~~ | superseded by cua-driver's `browser_*` tools | dropped |
 | ~~`whatsapp`~~ | dropped — ToS/ban risk not worth it | dropped |
 
+### The GUI is the expensive path — use it last
+
+**Asked 2026-09-08: is ~$0.30 and three minutes the limit for agentic desktop
+control?** Roughly yes, and the reason is structural:
+
+1. Every UI action needs a model decision — **one API call**.
+2. Element-indexed actions need a fresh snapshot first — **a second call**.
+3. The whole conversation is re-sent on every call, so tokens grow **roughly
+   quadratically** with the number of actions.
+
+So GUI driving costs about `O(actions²)` in tokens. No prompt tweak changes
+that; five separate attempts failed to (see
+[06-phase1-hermes.md](06-phase1-hermes.md)).
+
+**`cua-driver`'s own MCP server instructions say the same thing:**
+
+> "Before UI work, classify the desired outcome. For non-GUI outcomes, prefer a
+> client-provided app API/SDK, headless/background interface, CLI, or filesystem
+> operation and read the result back in that semantic domain."
+
+The tool built for driving GUIs tells you not to drive a GUI when you have an
+alternative. **Take that seriously.**
+
+**The ladder, cheapest first:**
+
+| Approach | Model cost | Use when |
+|---|---|---|
+| API / CLI / file | **~$0** | An interface exists. Gmail has an API — do not click Gmail. |
+| Browser tools (CDP) | low–medium | It is a web page and there is no API |
+| Desktop UIA | **~$0.30/task** | A native app with no other way in |
+| Pixel clicking | worst | Never, unless the tree lies |
+
+**Design rule:** reach for the desktop limb when there is genuinely no other
+door — not because it is the general-purpose one. A capability that clicks
+through a GUI every morning is a capability that should have been an API call
+or a script.
+
+This is the same conclusion the cost work reached from the other direction, and
+it is why `capabilities/` matters more than it first appeared.
+
+---
+
 ### Desktop: why `cua-driver`
 
 It reads the Windows **accessibility tree** and delivers input in the
