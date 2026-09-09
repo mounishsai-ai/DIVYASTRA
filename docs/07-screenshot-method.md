@@ -115,3 +115,48 @@ for *him*, irrelevant as architecture.
   still pay agent-loop latency. A **reflex layer** — common intents matched
   locally, before any model call — is the only route to ~1 s and $0.
 - She cannot talk while working. The loop is strictly blocking.
+
+---
+
+## The Gemini attempt: it pressed Win+Shift+S
+
+Two attempts to have Hermes/Gemini drive the screenshot method. Neither
+produced a usable number, and the second failed in a way worth keeping.
+
+**Attempt 1 — void.** Mounish was using the voice assistant at the same time.
+Two agents on one desktop make each other incoherent. Killed at 8 minutes.
+Note: `hermes.exe` SURVIVED the kill of its Python parent and kept running
+orphaned. Killing the caller does not stop the agent - that needs a real
+cleanup path before anything runs unattended.
+
+**Attempt 2 — the real finding.** Told to "take a screenshot of the desktop,
+look at it, and click", Gemini pressed **Win+Shift+S** - the human way to take
+a screenshot - instead of calling `get_desktop_state`. Then it stalled, because
+a snip goes to the CLIPBOARD, not into the model's context. Two minutes, zero
+clicks, two SnippingTool processes left on screen.
+
+Partly my prompt's fault: "take a screenshot" invites the human reading. But
+the structural lesson is bigger than the wording.
+
+### Perception must not be a tool the model chooses to call
+
+Every serious computer-use system attaches the observation **automatically on
+every step**. browser-use builds the state message for the model; UFO2 fuses
+UIA and vision into a provided control list; UI-TARS is trained on
+screenshot-in/action-out. In none of them does the model decide *whether to
+look*.
+
+Our setup makes looking optional, and a weak model got it wrong in the most
+basic way available to it. No amount of prompt text fixes a capability the
+model can simply fail to invoke - it just moves the failure.
+
+**The fix is structural:** a loop that always hands the model the current
+screen and asks only for the next action. That is a small agent loop of our
+own, not a Hermes prompt.
+
+Second-order lesson: over-constraining a weak model makes it improvise worse.
+Forbidding `launch_app`, terminal and browser tools left it reaching for
+keyboard tricks. Constraints narrow the good paths as well as the bad ones.
+
+**Still unmeasured:** the cost and speed of the screenshot method under Gemini.
+Two attempts, two different failures, no number. Not claimed either way.
