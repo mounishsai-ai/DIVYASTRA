@@ -58,6 +58,38 @@ she is using at startup.
 
 ---
 
+## Where we got to on 9 Sep (desktop control)
+
+**She can drive the desktop now, and it is ~40x faster than it was.**
+`divyastra/desktop/` - run it by hand:
+
+```
+divyastraoice\.venv\Scripts\python.exe divyastra\desktop\loop.py "open spotify"
+```
+
+| | time |
+|---|---|
+| old GUI agent loop | 238 s |
+| new, first time | 6-30 s (one model call) |
+| new, once learned | **~1 s, no model call, free** |
+
+The idea in one line: **the model decides WHAT to click, Windows says WHERE.**
+Vision models read screens well and point badly (Gemini answered y=971 for a
+540px-tall image), so it picks a number from a list and the coordinates come
+from UI Automation.
+
+**Works:** opening and switching to apps. **Not finished:** multi-step jobs
+inside an app - "play Shape of You in Spotify" got Spotify open then could not
+find the search box. Four bugs from that run are fixed; it has NOT been re-run.
+
+**Not wired into her voice yet** - deliberately. It runs from the command line
+only until it is trusted.
+
+Also settled: UI-TARS is ruled out on this laptop (79 s to prefill one
+screenshot). Full numbers in [docs/07](docs/07-screenshot-method.md).
+
+---
+
 ## Her name is "hey divya"
 
 She answers to her own name now. You tested it with `--compare` on your own

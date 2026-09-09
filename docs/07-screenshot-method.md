@@ -160,3 +160,46 @@ keyboard tricks. Constraints narrow the good paths as well as the bad ones.
 
 **Still unmeasured:** the cost and speed of the screenshot method under Gemini.
 Two attempts, two different failures, no number. Not claimed either way.
+
+---
+
+## UI-TARS 2B on this CPU: answered, and it is a no
+
+Measured 2026-09-09. `hf.co/bartowski/UI-TARS-2B-SFT-GGUF:Q4_K_M` via Ollama,
+2.45 GB on disk, recognised as qwen2vl / 1.78B params.
+
+One screenshot, one "click YouTube in the taskbar":
+
+| stage | time |
+|---|---|
+| model load (first call only) | 11.5 s |
+| **prefill of ONE screenshot (1116 tokens)** | **78.7 s** |
+| generating the answer (37 tokens) | 2.2 s |
+| **total** | **94.5 s** |
+
+**The "2-5 seconds on CPU" figure is real but describes the wrong stage.**
+Generation ran at ~17 tokens/s, which matches it. Our cost is PREFILL - turning
+a picture into tokens before it writes anything - and that took 79 seconds on
+Intel UHD. Per click.
+
+It also missed. UI-TARS returns coordinates normalised to 0-1000; it answered
+`click(692,973)`, which maps to (1329, 1051) on a 1920x1080 screen. The row is
+right - y=1051 against the taskbar's true y=1050 - but x is 174 px off, about
+three icons wide, landing nearer WhatsApp than YouTube (true centre 1155).
+
+So on this hardware it is ~15x slower than Gemini AND wrong, and the accuracy
+is arguably the lesser problem: 79 s per step is disqualifying whatever it
+clicks. The 2B is the weakest of the family, and a bigger one would prefill
+slower still.
+
+**This does not make UI-TARS a bad idea** - it is the right answer to the
+grounding problem, and on a machine with a GPU it is likely the best answer.
+It is ruled out by THIS laptop, which was the original hardware constraint all
+along. Recorded so nobody re-runs it hoping.
+
+The 2.45 GB model can be removed with:
+    ollama rm hf.co/bartowski/UI-TARS-2B-SFT-GGUF:Q4_K_M
+
+One more thing worth keeping: the GGUF repo a web search recommends first
+(`enacimie/UI-TARS-2B-SFT-Q4_K_M-GGUF`) ships NO mmproj file, so it cannot see
+images at all. Check for a projector before downloading any vision GGUF.
