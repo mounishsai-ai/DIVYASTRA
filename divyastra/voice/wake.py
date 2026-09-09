@@ -41,18 +41,21 @@ _MODELS = _HERE / "models"
 # Pretrained options that ship with openWakeWord: alexa, hey_jarvis, hey_mycroft,
 # hey_rhasspy. Our own "hey_divya" is the other option -- see below for why it
 # is not yet the default.
-WAKE_WORD = "hey_jarvis"
+WAKE_WORD = "hey_divya"
 
 # Per-engine thresholds. They are NOT on the same scale, so they cannot share a
 # constant: openWakeWord's hey_jarvis and our livekit model score differently
 # on identical audio.
 THRESHOLDS = {
     "hey_jarvis": 0.25,
-    # Mounish's call, 2026-09-09. Deliberately generous, same reasoning as
-    # hey_jarvis below: a missed wake is the expensive failure, a false one is
-    # free. eval.json's "optimal_threshold" of 0.88 is ignored on purpose - it
-    # was found against piper synthetic speech, and a synthetic number has
-    # already misled this project once.
+    # Chosen by Mounish on 2026-09-09 from two `--compare` runs on his OWN
+    # voice - which is the only evidence that counts here, and outranks every
+    # synthetic number in this file. eval.json's "optimal_threshold" of 0.88 is
+    # ignored on purpose: it was fitted to piper speech, and a synthetic number
+    # has already misled this project once.
+    #
+    # Deliberately generous, same reasoning as hey_jarvis below: a missed wake
+    # is the expensive failure, a false one is free.
     #
     # KNOWN RISK, measured on a real mic: this model idles at 0.15-0.21 in a
     # quiet room and ambient noise with no speech reached 0.54, so 0.5 will
@@ -75,9 +78,13 @@ COOLDOWN_SECONDS = 1.5  # ignore repeats right after a hit
 SAMPLE_RATE = 16000
 CHUNK = 1280  # 80 ms -- the frame size both engines expect
 
-# NOTE: openWakeWord's pretrained models are CC-BY-NC-SA 4.0 (non-commercial).
-# Fine for personal use; retrain or replace before distributing DIVYASTRA.
-# Our own hey_divya model carries no such restriction.
+# LICENCE, and it is not "ours is free of strings":
+#   - openWakeWord's pretrained hey_jarvis is CC-BY-NC-SA 4.0 (non-commercial).
+#   - hey_divya's CLASSIFIER is ours, trained from scratch, unencumbered.
+#   - BUT both engines still run on the shared melspectrogram.onnx and
+#     embedding_model.onnx, which derive from Google's speech_embedding.
+# So training our own removed one restriction, not all of them. Fine for
+# personal use either way; check both before distributing DIVYASTRA.
 
 
 def threshold() -> float:

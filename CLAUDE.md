@@ -65,13 +65,14 @@ to make that structurally impossible. Do not break them for convenience.
 > **Phase 2 DONE — she is a working voice assistant.**
 >
 > Verified live, one continuous loop:
-> `"hey jarvis"` -> wake (local, free) -> `"Yes?"` -> you speak -> transcribed
+> `"hey divya"` -> wake (local, free) -> `"Yes?"` -> you speak -> transcribed
 > locally -> Hermes thinks (~$0.01) -> she answers **aloud in her own voice**.
 >
 > - [x] `voice/tts.py` — Kokoro `af_jessica`, 3.2x faster than real time.
 > - [x] `voice/stt.py` — faster-whisper `base.en`, 1.37 s for 3.2 s of audio.
-> - [x] `voice/wake.py` — `hey_jarvis`, **7.1% of one core idle**, pauses while
->       the laptop is locked.
+> - [x] `voice/wake.py` — **`hey_divya`, our own trained model**, threshold 0.5
+>       chosen from `--compare` on his real voice. ~3.7% of one core idle,
+>       pauses while the laptop is locked. `hey_jarvis` still available.
 > - [x] `voice/personality.md` -> Hermes `SOUL.md`. She calls him "Boss" only
 >       when addressing him.
 > - [x] `voice/assistant.py` — the always-on loop tying them together.
@@ -99,7 +100,7 @@ to make that structurally impossible. Do not break them for convenience.
 | Hard-task brain | **Claude Sonnet via Agent SDK** | $20/mo credit incl. in Pro |
 | Voice out (FRIDAY) | **Kokoro-82M**, voice `af_jessica`, local CPU | free |
 | Voice in | **faster-whisper** `base.en`, local CPU | free |
-| Wake word | **openWakeWord** `hey_jarvis` (not "Divyastra" — see roadmap) | free (non-commercial models) |
+| Wake word | **our own** `hey_divya`, trained on Kaggle GPU | free (see note) |
 | Phone channel | **WhatsApp** (later) + **Twilio** (real calls) | free / ~$2/mo |
 | Telegram | **dropped** — WhatsApp is the only messaging channel | — |
 | Custom limbs | our own MCP servers | free |
