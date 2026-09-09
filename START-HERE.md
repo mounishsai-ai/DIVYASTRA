@@ -31,38 +31,30 @@ it is a five-minute job.
 
 ---
 
-## BROKEN RIGHT NOW: Windows is blocking Hermes
+## Fixed: Windows was blocking her brain
 
-**Smart App Control switched itself on and is blocking her brain.** This is why
-nothing happens when you talk to her.
+**Smart App Control had switched itself on** and was blocking every Hermes
+binary (`WinError 4551`). It ships in an "evaluation" mode that flips to
+enforcing without asking, which is why she worked one day and not the next.
+
+You turned it off on 2026-09-09 and restarted. Verified: policy state is now 0,
+`hermes.exe` runs, and she answers again. **That setting cannot be turned back
+on without reinstalling Windows** - you still have normal Defender protection,
+which is what nearly every Windows PC runs.
+
+**If she ever goes silent again, check this first:**
 
 ```
-[WinError 4551] An Application Control policy has blocked this file
+(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy').VerifiedAndReputablePolicyState
 ```
 
-Every Hermes binary is blocked -- `hermes.exe`, and its bundled Python too.
-Verified: `VerifiedAndReputablePolicyState = 1` (enforcing) and `hermes.exe` is
-unsigned. Smart App Control ships in an "evaluation" mode that flips itself to
-enforcing without asking, which is why this worked yesterday and not today.
+0 is off and correct. And run her with `--debug`, which prints the mic and
+speaker she is using plus a live meter of what she is hearing.
 
-**Not affected:** cua-driver (still running), our own Python, voice, wake word,
-Claude Code. Only Hermes.
-
-There is no exclusion list for Smart App Control, and self-signing does not
-satisfy it. So there are two real ways out, and the choice is yours:
-
-1. **Turn Smart App Control off.** Windows Security -> App & browser control ->
-   Smart App Control -> Off. **This is one-way: it cannot be switched back on
-   without resetting or reinstalling Windows.** Everything works again
-   immediately.
-2. **Stop depending on Hermes binaries.** Call Vertex/Gemini straight from our
-   own Python, which Windows is happy to run. Keeps the security setting on.
-   Costs the same per question. Loses what Hermes gave us for free: persistent
-   memory, cron, and the channel gateways for phone access later.
-
-`brain/claude_cli.py` already works today and needs no decision, but it is the
-expensive brain -- about eleven times Gemini per question, out of the $20/month
-credit.
+**The other half of that day's confusion:** her voice goes to the SYSTEM
+DEFAULT speaker, which on this laptop is the Boult Bluetooth headset. Paired
+but not on your head sounds exactly like a crash. She now prints which speaker
+she is using at startup.
 
 ---
 

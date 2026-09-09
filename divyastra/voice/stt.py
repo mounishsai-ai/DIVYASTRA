@@ -95,6 +95,18 @@ def record_until_silence(
     return np.concatenate(chunks, axis=0).flatten().astype(np.float32)
 
 
+# Whisper HALLUCINATES on noise. Measured 2026-09-09: a false wake on an empty
+# room produced "Carver, turn around, change your game." out of nothing. That is
+# not harmless - non-empty text goes to the brain, costs a real API call, and
+# makes her answer out loud for no reason. The "a false wake costs nothing"
+# assumption held only while the brain was broken.
+#
+# So trust the model's own confidence rather than guessing from the text.
+# faster-whisper reports both per segment:
+MAX_NO_SPEECH_PROB = 0.60  # its own estimate that the audio is not speech
+MIN_AVG_LOGPROB = -1.00  # how confident it is in the words it chose
+
+
 def transcribe_audio(audio: np.ndarray) -> str:
     """Text for a mono 16 kHz float32 array. Empty string if nothing intelligible."""
     if audio.size < int(SAMPLE_RATE * MIN_SPEECH_SECONDS):
@@ -102,7 +114,23 @@ def transcribe_audio(audio: np.ndarray) -> str:
     segments, _info = _get_model().transcribe(
         audio, language="en", vad_filter=True, beam_size=1
     )
-    return " ".join(s.text.strip() for s in segments).strip()
+    return _join_confident(segments)
+
+
+def _join_confident(segments) -> str:
+    """Keep only segments the model itself believes are speech."""
+    kept = []
+    for s in segments:
+        no_speech = getattr(s, "no_speech_prob", 0.0)
+        logprob = getattr(s, "avg_logprob", 0.0)
+        if no_speech > MAX_NO_SPEECH_PROB or logprob < MIN_AVG_LOGPROB:
+            print(
+                f"  (discarded '{s.text.strip()[:40]}' - "
+                f"no_speech={no_speech:.2f} logprob={logprob:.2f})"
+            )
+            continue
+        kept.append(s.text.strip())
+    return " ".join(kept).strip()
 
 
 def transcribe(path: str | Path) -> str:
@@ -110,7 +138,7 @@ def transcribe(path: str | Path) -> str:
     segments, _info = _get_model().transcribe(
         str(path), language="en", vad_filter=True, beam_size=1
     )
-    return " ".join(s.text.strip() for s in segments).strip()
+    return _join_confident(segments)
 
 
 def listen(max_seconds: float = MAX_SECONDS) -> str:
