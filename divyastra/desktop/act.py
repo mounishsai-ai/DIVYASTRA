@@ -21,9 +21,12 @@ TIMEOUT = 60
 
 def _call(tool: str, args: dict) -> dict:
     """One cua-driver tool call. Raises on transport failure, not on refusal."""
+    # encoding is not optional here: a Chromium window's UIA dump is ~600 KB of
+    # UTF-8 and Python's default cp1252 on Windows dies on it mid-read.
     r = subprocess.run(
         [str(CUA), "call", tool, "--args", json.dumps(args)],
-        capture_output=True, text=True, timeout=TIMEOUT,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        timeout=TIMEOUT,
     )
     out = (r.stdout or "").strip()
     if r.returncode != 0 and not out:
@@ -51,8 +54,27 @@ def type_text(text: str) -> dict:
 
 
 def press(key: str) -> dict:
-    """Press one named key - return, tab, escape, up, down, f5..."""
-    return _call("press_key", {"scope": "desktop", "key": key})
+    """Press a key or a combination - "return", "f5", "ctrl+k", "alt+tab".
+
+    press_key takes ONE key; a combination has to go to `hotkey` instead.
+    Measured 2026-09-09: the model asked for ctrl+k to open Spotify's search,
+    it was sent to press_key, and nothing happened - so the model tried again,
+    and again. A silently-ignored action looks exactly like a wrong decision.
+    """
+    parts = [k.strip().lower() for k in key.replace("-", "+").split("+") if k.strip()]
+    if len(parts) > 1:
+        return _call("hotkey", {"scope": "desktop", "keys": parts})
+    return _call("press_key", {"scope": "desktop", "key": parts[0] if parts else key})
+
+
+def click_token(token: str, pid: int) -> dict:
+    """Click an element by its snapshot token - no coordinates at all.
+
+    Tokens come from a get_window_state snapshot and expire when the next
+    snapshot of that window replaces them, so click from the SAME snapshot that
+    was shown to the model.
+    """
+    return _call("click", {"element_token": token, "pid": int(pid)})
 
 
 def windows() -> list[dict]:

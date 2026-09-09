@@ -45,6 +45,8 @@ class Element:
     x: int  # centre, screen pixels
     y: int
     source: str  # "taskbar" | "window:<title>"
+    token: str = ""  # cua-driver element token, when it came from a snapshot
+    pid: int = 0  # owner, needed to use the token
 
     def __str__(self) -> str:
         return f"{self.name}  [{self.kind} @ {self.x},{self.y}]"
@@ -84,15 +86,74 @@ def taskbar() -> list[Element]:
     return out
 
 
-def foreground() -> list[Element]:
-    """Every named, clickable thing in the window the user is currently looking at."""
-    import uiautomation as auto
+def foreground_window() -> tuple[int, int]:
+    """(pid, hwnd) of the window the user is currently looking at."""
+    import ctypes
 
+    u = ctypes.windll.user32
+    hwnd = u.GetForegroundWindow()
+    pid = ctypes.c_ulong()
+    u.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return int(pid.value), int(hwnd)
+
+
+def foreground(limit: int = 60) -> list[Element]:
+    """Every named, clickable thing inside the focused window.
+
+    THIS GOES THROUGH cua-driver, NOT the plain UIA walk above, and the
+    difference is the whole reason "play a song in Spotify" failed. Chromium
+    builds its accessibility tree lazily, so walking a Chromium window (Spotify's
+    web player, Chrome, Cursor, anything Electron) the naive way returns FOUR
+    elements - Minimize, Maximize, Restore, Close - and the search box the model
+    needs is simply absent from the list. It then flails at keyboard shortcuts
+    because nothing clickable was offered. Measured 2026-09-09.
+
+    cua-driver's snapshot of the same window returns ~2500 elements, 1796 of
+    them named. So this is a real capability difference, not a tuning knob.
+
+    Elements carry an `element_token` valid only until the next snapshot of the
+    same window, which is why the loop must act on the snapshot it just showed.
+    """
+    from act import _call
+
+    pid, hwnd = foreground_window()
+    try:
+        d = _call("get_window_state", {"pid": pid, "window_id": hwnd,
+                                       "max_elements": 400, "max_depth": 24})
+    except Exception:
+        return []
+
+    title = str(d.get("app_name") or "window")
     out: list[Element] = []
-    win = auto.GetForegroundControl()
-    if win:
-        title = (win.Name or "window").strip()
-        _walk(win, f"window:{title[:40]}", out)
+    seen: set[tuple] = set()
+    for e in d.get("elements") or []:
+        label = " ".join(str(e.get("label") or "").split())
+        role = str(e.get("role") or "")
+        if not label or role in ("Document", "Pane", "Group", "Custom"):
+            continue
+        if not (set(e.get("actions") or []) & {"invoke", "set_value", "select", "toggle"}):
+            continue
+        f = e.get("frame") or {}
+        w, h = int(f.get("w") or 0), int(f.get("h") or 0)
+        if w <= 0 or h <= 0:  # off-screen or collapsed
+            continue
+        key = (label, role)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(
+            Element(
+                name=label[:80],
+                kind=role,
+                x=int(f.get("x") or 0) + w // 2,
+                y=int(f.get("y") or 0) + h // 2,
+                source=f"window:{title[:30]}",
+                token=str(e.get("element_token") or ""),
+                pid=pid,
+            )
+        )
+        if len(out) >= limit:
+            break
     return out
 
 

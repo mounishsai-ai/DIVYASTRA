@@ -30,6 +30,9 @@ LOCATION = "global"
 MODEL = "gemini-3.8-flash"
 SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
+RETRIES = 4   # 429s are common on the shared pool; give up only after real persistence
+BACKOFF = 5   # seconds, doubling: 5, 10, 20
+
 # Set by the last ask(). The loop budgets on these.
 last_seconds: float = 0.0
 last_tokens: int = 0
@@ -73,9 +76,18 @@ def ask(prompt: str, image: str | Path | None = None, timeout: int = 120) -> dic
         },
     }
 
+    # Vertex answers 429 RESOURCE_EXHAUSTED under load - hit for real on
+    # 2026-09-09 mid-task, which killed the run outright. It is a shared,
+    # on-demand pool, so the fix is to wait and retry rather than to fail.
     t0 = time.time()
-    r = requests.post(url, json=body, headers={"Authorization": f"Bearer {_token()}"},
-                      timeout=timeout)
+    for attempt in range(RETRIES):
+        r = requests.post(url, json=body, headers={"Authorization": f"Bearer {_token()}"},
+                          timeout=timeout)
+        if r.status_code != 429:
+            break
+        wait = BACKOFF * (2 ** attempt)
+        print(f"    (Vertex busy, waiting {wait}s and retrying)", flush=True)
+        time.sleep(wait)
     last_seconds = time.time() - t0
     if r.status_code != 200:
         raise RuntimeError(f"Vertex HTTP {r.status_code}: {r.text[:300]}")

@@ -46,7 +46,8 @@ import act  # noqa: E402
 import brain  # noqa: E402
 import screen  # noqa: E402
 
-MAX_STEPS = 6  # a hard cap: a loop that cannot finish must stop, not wander
+MAX_STEPS = 8  # a hard cap: a loop that cannot finish must stop, not wander
+SETTLE = 1.2   # seconds to let the UI catch up before looking again
 SHOT = Path.home() / "AppData" / "Local" / "Temp" / "divyastra-screen.jpg"
 MEMORY = _HERE / "memory.json"
 OVERVIEW_WIDTH = 960  # half of 1920. Measured legibility floor; below this icons blur.
@@ -131,7 +132,7 @@ def target_of(goal: str) -> str:
 # --- the loop ----------------------------------------------------------------
 
 
-def _numbered(elements: list[screen.Element], limit: int = 40) -> str:
+def _numbered(elements: list[screen.Element], limit: int = 70) -> str:
     return "\n".join(f"{i}. {e.name}" for i, e in enumerate(elements[:limit]))
 
 
@@ -189,6 +190,7 @@ def do(goal: str, verbose: bool = True) -> Result:
 
     # --- tier 2: look ---
     calls = tokens = 0
+    did: list[str] = []   # what actually happened, for the report
     for step in range(1, MAX_STEPS + 1):
         shot = _overview(SHOT)
         elements = screen.everything()
@@ -212,7 +214,8 @@ def do(goal: str, verbose: bool = True) -> Result:
         log(f"step {step}: {action} {why} ({brain.last_seconds:.1f}s)")
 
         if action == "done":
-            return Result(True, "looked", why or "model says done", step,
+            detail = " -> ".join(did) if did else (why or "already done")
+            return Result(True, "looked", detail, step,
                           time.time() - t0, calls, tokens, trace)
         if action == "click":
             try:
@@ -220,20 +223,47 @@ def do(goal: str, verbose: bool = True) -> Result:
             except (KeyError, ValueError, IndexError, TypeError):
                 log(f"bad element number: {reply!r}")
                 continue
-            log(f"clicking {e.name} @ {e.x},{e.y}")
-            act.click(e.x, e.y)
-            _remember(target, e.name)
-            return Result(True, "looked", e.name, step, time.time() - t0, calls, tokens, trace)
+            # Prefer the snapshot token: it invokes the element through the
+            # accessibility layer instead of aiming a pointer at a rectangle,
+            # so it survives a window that scrolled or moved a pixel since.
+            if e.token and e.pid:
+                log(f"clicking {e.name} (token)")
+                r = act.click_token(e.token, e.pid)
+                if str(r.get("effect")) == "refused" or "error" in r:
+                    log("token refused, falling back to the point")
+                    act.click(e.x, e.y)
+            else:
+                log(f"clicking {e.name} @ {e.x},{e.y}")
+                act.click(e.x, e.y)
+            did.append(e.name)
+            # Only the FIRST action of a goal is worth remembering: it is the
+            # one that reliably repeats ("open Spotify"). Later steps depend on
+            # what the app was showing at the time, so caching them would
+            # replay a click into whatever happens to be there next time.
+            if step == 1:
+                _remember(target, e.name)
+            time.sleep(SETTLE)
+            continue  # a click is rarely the whole job - look again
         if action == "type":
-            act.type_text(str(reply.get("text", "")))
+            text = str(reply.get("text", ""))
+            log(f"typing {text!r}")
+            act.type_text(text)
+            did.append(f"typed {text!r}")
+            time.sleep(SETTLE)
             continue
         if action == "key":
-            act.press(str(reply.get("key", "return")))
+            k = str(reply.get("key", "return"))
+            log(f"pressing {k}")
+            act.press(k)
+            did.append(f"pressed {k}")
+            time.sleep(SETTLE)
             continue
         log(f"unusable reply: {reply!r}")
 
-    return Result(False, "failed", f"gave up after {MAX_STEPS} steps",
-                  MAX_STEPS, time.time() - t0, calls, tokens, trace)
+    detail = f"gave up after {MAX_STEPS} steps"
+    if did:
+        detail += " (did: " + " -> ".join(did) + ")"
+    return Result(False, "failed", detail, MAX_STEPS, time.time() - t0, calls, tokens, trace)
 
 
 if __name__ == "__main__":
