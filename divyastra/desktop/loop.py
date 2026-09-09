@@ -84,15 +84,39 @@ def _memory() -> dict:
     return {}
 
 
-def _remember(target: str, element_name: str) -> None:
-    """Store the element NAME, not its coordinates.
+def app_of(element_name: str) -> str:
+    """The stable app identity inside a taskbar button's name.
 
-    Names survive a taskbar that shifts when another app is pinned; coordinates
-    do not. Looking the name up again is free, so there is nothing to gain by
-    caching the position and a stale click to lose.
+    MEASURED THE HARD WAY 2026-09-09: taskbar names change with state, so the
+    obvious "remember the name" is wrong and silently costs a model call every
+    time. All of these are the same button:
+
+        "Spotify pinned"                        (closed)
+        "Spotify - 1 running window pinned"     (open)
+        "Batman - Chrome - 1 running window pinned"   (open, and the page title
+                                                       rides in front)
+
+    Windows puts the app name last, before the state suffixes. Strip those and
+    take the final segment, and all three collapse to "Spotify" / "Chrome".
+    """
+    n = element_name.strip()
+    n = re.sub(r"\s*-\s*\d+\s+running\s+windows?", "", n, flags=re.I)
+    n = re.sub(r"\s*\bpinned\b\s*$", "", n, flags=re.I)
+    n = n.strip(" -")
+    if " - " in n:
+        n = n.split(" - ")[-1].strip()
+    return n
+
+
+def _remember(target: str, element_name: str) -> None:
+    """Store the app identity, not the full name and not coordinates.
+
+    Coordinates go stale the moment anything is pinned or unpinned; full names
+    go stale the moment the app opens. The app identity survives both, and
+    looking it up again is free.
     """
     m = _memory()
-    m[target] = {"element": element_name, "learned": time.strftime("%Y-%m-%d %H:%M")}
+    m[target] = {"app": app_of(element_name), "learned": time.strftime("%Y-%m-%d %H:%M")}
     MEMORY.write_text(json.dumps(m, indent=2), encoding="utf-8")
 
 
@@ -144,13 +168,16 @@ def do(goal: str, verbose: bool = True) -> Result:
     # --- tier 1: remembered ---
     known = _memory().get(target)
     if known:
-        hits = [e for e in elements if e.name == known["element"]]
+        # Compare app identities, not raw names: the same button is called
+        # different things depending on whether the app happens to be running.
+        want = app_of(known.get("app") or known.get("element", ""))
+        hits = [e for e in elements if app_of(e.name) == want]
         if hits:
             e = hits[0]
-            log(f"remembered: {e.name}")
+            log(f"remembered: {want} -> {e.name}")
             act.click(e.x, e.y)
             return Result(True, "remembered", e.name, 1, time.time() - t0, trace=trace)
-        log("remembered it, but it is not on screen now")
+        log(f"remembered {want!r}, but it is not on screen now")
 
     # NO STRING-MATCHING TIER. It was here and it was wrong: matching the goal
     # text against element names is guessing without understanding. "open chrome"
