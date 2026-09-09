@@ -48,11 +48,18 @@ WAKE_WORD = "hey_jarvis"
 # on identical audio.
 THRESHOLDS = {
     "hey_jarvis": 0.25,
-    # Placeholder ONLY -- must be measured on Mounish's real voice before use.
-    # eval.json's "optimal_threshold" is 0.88, but that was found against piper
-    # synthetic speech, and this project has already been bitten once by taking
-    # a synthetic number at face value. Run `python wake.py --compare`.
-    "hey_divya": 0.70,
+    # Mounish's call, 2026-09-09. Deliberately generous, same reasoning as
+    # hey_jarvis below: a missed wake is the expensive failure, a false one is
+    # free. eval.json's "optimal_threshold" of 0.88 is ignored on purpose - it
+    # was found against piper synthetic speech, and a synthetic number has
+    # already misled this project once.
+    #
+    # KNOWN RISK, measured on a real mic: this model idles at 0.15-0.21 in a
+    # quiet room and ambient noise with no speech reached 0.54, so 0.5 will
+    # sometimes wake on the room. That costs nothing - no speech follows, so
+    # transcription returns "" and she sleeps again with no model call - but
+    # she does say "Yes?" aloud each time. Raise this number if that grates.
+    "hey_divya": 0.50,
 }
 # Measured on Mounish's voice, 2026-09-08 (hey_jarvis):
 #   projected/test voice : 0.83
