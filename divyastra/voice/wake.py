@@ -267,10 +267,15 @@ def is_locked() -> bool:
 def listen_for_wake(
     on_wake: Callable[[], None] | None = None,
     pause_when_locked: bool = True,
+    on_score: Callable[[float], None] | None = None,
 ) -> Iterator[float]:
     """Yield a confidence score every time the wake word is heard. Runs forever.
 
     Pass `on_wake` for a callback, or iterate the generator -- whichever suits.
+
+    `on_score` receives EVERY frame's score, including the ones below the
+    threshold. That is how you find out whether she is hearing you at all: a
+    silent failure and a near-miss look identical from the outside.
     """
     import sounddevice as sd  # imported here so offline scoring can use this file
 
@@ -291,6 +296,8 @@ def listen_for_wake(
 
             data, _overflowed = stream.read(CHUNK)
             best = model.predict(data.flatten())
+            if on_score:
+                on_score(best)
             now = time.time()
             if best > thresh and (now - last_hit) > COOLDOWN_SECONDS:
                 last_hit = now

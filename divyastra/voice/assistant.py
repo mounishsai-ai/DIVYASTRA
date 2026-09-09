@@ -96,17 +96,54 @@ def handle_one_turn() -> None:
     tts.speak(reply)
 
 
+def _announce_audio() -> None:
+    """Say out loud, in text, which mic and which speaker she is using.
+
+    Worth the four lines: her voice goes to the SYSTEM DEFAULT output, which on
+    this laptop is a Bluetooth headset. If it is paired but not on your head,
+    she is talking and you hear nothing - which looks exactly like a crash.
+    """
+    try:
+        import sounddevice as sd
+
+        # sd.default.device is an _InputOutputPair, not a tuple - it indexes
+        # but does not slice.
+        din, dout = sd.default.device[0], sd.default.device[1]
+        names = sd.query_devices()
+        print(f"  mic     : {names[din]['name']}")
+        print(f"  speaker : {names[dout]['name']}")
+    except Exception as exc:
+        print(f"  (could not read audio devices: {exc})")
+
+
 def main() -> None:
+    debug = "--debug" in sys.argv
+
     print("DIVYASTRA - loading models...")
     tts._get_engine()
     stt._get_model()
     wake.load()
+    _announce_audio()
     print(f"ready. wake word: '{wake.WAKE_WORD}' (threshold {wake.threshold()})")
     print("listening. Ctrl+C to stop.\n")
     tts.speak("Systems online.")
 
+    # In debug, show what the mic is actually scoring, so "she ignored me" can
+    # be told apart from "she never heard me".
+    meter = None
+    if debug:
+        state = {"peak": 0.0, "last": 0.0}
+
+        def meter(score: float) -> None:
+            now = time.time()
+            state["peak"] = max(state["peak"], score)
+            if score > 0.20 and now - state["last"] > 0.4:
+                bar = "#" * int(score * 40)
+                print(f"    {score:5.3f} |{bar:<40}| peak {state['peak']:.3f}")
+                state["last"] = now
+
     try:
-        for score in wake.listen_for_wake():
+        for score in wake.listen_for_wake(on_score=meter):
             print(f"[{time.strftime('%H:%M:%S')}] wake  score={score:.2f}")
             try:
                 handle_one_turn()
