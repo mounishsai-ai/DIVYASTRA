@@ -52,8 +52,35 @@ SHOT = Path.home() / "AppData" / "Local" / "Temp" / "divyastra-screen.jpg"
 MEMORY = _HERE / "memory.json"
 OVERVIEW_WIDTH = 960  # half of 1920. Measured legibility floor; below this icons blur.
 
-# Words that describe the doing, not the thing to be done.
+# Words that describe the doing, not the thing to be done. Used to STRIP the
+# verb off a goal so "open YouTube" -> "youtube" for the memory key.
 _VERBS = r"(?:please\s+)?(?:can\s+you\s+)?(?:open|launch|start|go\s+to|bring\s+up|show|switch\s+to|run)\s+"
+
+# A SEPARATE verb set, for ROUTING only: does a spoken sentence look like a
+# desktop command at all, or is it conversation for the brain? Kept apart from
+# _VERBS on purpose - "what can you open" must NOT route here, so this one is
+# anchored to the start of the sentence, and it is wider (play/close/pause are
+# desktop actions but are not app-openers, so they do not belong in _VERBS).
+# Do not merge the two: stripping and routing are different jobs.
+_ROUTE = re.compile(
+    r"^\s*(?:please\s+|hey\s+divya[,\s]+|divya[,\s]+)?"
+    r"(?:can\s+you\s+|could\s+you\s+|would\s+you\s+)?"
+    r"(?:open|launch|start|run|play|close|quit|switch\s+to|go\s+to|bring\s+up|"
+    r"show|pause|resume|minimi[sz]e|maximi[sz]e)\b",
+    re.I,
+)
+
+
+def is_desktop_command(text: str) -> bool:
+    """True if a spoken sentence should be handled on the desktop, not by the brain.
+
+    A heuristic on purpose: a verb at the START of the sentence. It can be
+    wrong both ways, and neither way is a disaster - a mis-routed question wastes
+    a few model calls before the loop gives up, a mis-routed command takes the
+    slower brain path. It just must not fire on questions ABOUT the desktop,
+    which is why it is anchored to the start.
+    """
+    return bool(_ROUTE.match(text or ""))
 
 
 @dataclass

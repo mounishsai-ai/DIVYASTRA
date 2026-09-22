@@ -31,6 +31,11 @@ import stt  # noqa: E402
 import tts  # noqa: E402
 import wake  # noqa: E402
 
+# The desktop limb lives in a sibling package. It manages its own imports, so we
+# only need its directory on the path to reach `loop`.
+sys.path.insert(0, str(_HERE.parent / "desktop"))
+import loop as desktop  # noqa: E402
+
 # --- how she reaches her brain ----------------------------------------------
 HERMES = Path.home() / "AppData" / "Local" / "hermes" / "bin" / "hermes.exe"
 # Hermes ingests CLAUDE.md/AGENTS.md from its working directory, so it must NOT
@@ -77,6 +82,20 @@ def ask_hermes(prompt: str) -> str:
 # What she says when woken. A chime is faster, but a spoken cue is unmistakable
 # - tested with a chime first and it was too subtle to act on.
 ACK = "Yes?"
+ON_IT = "On it."  # a desktop task takes seconds; say something before going quiet
+
+
+def _do_on_desktop(heard: str) -> None:
+    """Run a spoken command on the desktop, and confirm it in a spoken way.
+
+    She speaks a short confirmation, never Result.detail - that is a log line
+    ("Spotify - 1 running window pinned"), and she is read aloud. The full trace
+    still prints to the terminal, which is where it is useful.
+    """
+    tts.speak(ON_IT)
+    result = desktop.do(heard, verbose=True)
+    print(f"  {result}")
+    tts.speak("Done." if result.ok else "Sorry, I couldn't do that one.")
 
 
 def handle_one_turn() -> None:
@@ -89,6 +108,14 @@ def handle_one_turn() -> None:
         return
 
     print(f"  you : {heard}")
+
+    # Route: a command like "open Spotify" goes to the desktop limb; anything
+    # else is conversation for the brain. The split lives in the desktop module
+    # so the voice loop stays ignorant of what counts as a desktop task.
+    if desktop.is_desktop_command(heard):
+        _do_on_desktop(heard)
+        return
+
     t0 = time.time()
     reply = ask_hermes(heard)
     print(f"  her : {reply}")
